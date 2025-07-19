@@ -37,7 +37,7 @@ build-image:
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
-        - mv bot_config/mercari_bot.yaml config.yaml
+        - mv bot-config/mercari-bot.yaml config.yaml
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
         - mv private_font/* font
 
