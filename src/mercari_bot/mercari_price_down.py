@@ -68,7 +68,9 @@ def execute_item(driver, wait, scrape_config, item, debug_mode):
         logging.info("更新してから %d 時間しか経過していないため、スキップします。", modified_hour)
         return
 
-    my_lib.selenium_util.click_xpath(driver, '//button[@aria-labelledby=":r1r:"]', is_warn=False)
+    my_lib.selenium_util.click_xpath(
+        driver, '//span[contains(text(), "閉じる")]/following-sibling::button', is_warn=False
+    )
 
     my_lib.selenium_util.click_xpath(driver, '//a[@data-testid="checkout-link"]')
 
