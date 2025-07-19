@@ -2,7 +2,7 @@ image: gitlab.green-rabbit.net:5050/kimata/local-ubuntu:250706_043ea01d
 
 variables:
     UV_LINK_MODE: copy
-    UV_PYTHON_INSTALL_DIR: ${CI_PROJECT_DIR}/.uv_python
+    UV_CACHE_DIR: .uv-cache
 
 stages:
     - generate-tag
@@ -72,25 +72,15 @@ test-prepare:
 
     artifacts:
         paths:
-            - .venv
-            - .uv_python
-
+            - $UV_CACHE_DIR
         expire_in: 1 hour
 
     cache:
         - key:
               files:
-                  - pyproject.toml
-                  - .gitlab-ci.yml
-              prefix: ${CI_COMMIT_REF_SLUG}-venv
+                  - uv.lock
           paths:
-              - .venv
-          policy: pull-push
-
-        - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
-          paths:
-              - .uv_python
-          policy: pull-push
+              - $UV_CACHE_DIR
 
 test-normal:
     stage: test
@@ -112,26 +102,6 @@ test-normal:
         - export LC_ALL=ja_JP.UTF-8
 
         - uv run python src/app.py -d
-
-    cache:
-        - key:
-              files:
-                  - pyproject.toml
-                  - .gitlab-ci.yml
-              prefix: ${CI_COMMIT_REF_SLUG}-venv
-          paths:
-              - .venv
-          policy: pull
-
-        - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
-          paths:
-              - .uv_python
-          policy: pull
-
-        - key: ${CI_PROJECT_NAME}-selenium
-          paths:
-              - data/chrome
-          policy: pull-push
 
     artifacts:
         when: always
