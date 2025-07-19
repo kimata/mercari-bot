@@ -9,6 +9,7 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install --no-install-recommends --assume-yes \
     curl \
     ca-certificates \
+    tini \
     build-essential \
     git \
     language-pack-ja \
@@ -58,5 +59,6 @@ COPY --chown=ubuntu:ubuntu . .
 
 RUN mkdir -p data
 
-ENTRYPOINT ["uv", "run"]
+ENTRYPOINT ["/usr/bin/tini", "--", "uv", "run", "--no-group", "dev"]
+
 CMD ["./src/app.py", "-l"]
