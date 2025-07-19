@@ -103,6 +103,11 @@ test-normal:
 
         - uv run python src/app.py -d
 
+    cache:
+        - key: ${CI_PROJECT_NAME}-selenium 
+          paths:            
+              - data/chrome 
+
     artifacts:
         when: always
         paths:
