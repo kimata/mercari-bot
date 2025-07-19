@@ -29,20 +29,33 @@ build-image:
         - generate-tag
 
     variables:
-        BUILDER: arm_builder
+        BUILDER: builder
 
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
-        - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/bot_config.git
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
         - mv bot_config/mercari_bot.yaml config.yaml
-        - git clone https://gitlab.green-rabbit.net/kimata/font.git private_font
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
         - mv private_font/* font
 
         - docker buildx create --driver docker-container --name ${BUILDER} --use --config /etc/buildkitd.toml
         - docker buildx use ${BUILDER}
         - docker buildx inspect --bootstrap
-        - docker buildx build --provenance=false --progress=plain --platform linux/amd64 --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:cache --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:latest --cache-to type=inline --cache-to type=registry,ref=${CI_REGISTRY_IMAGE}:cache,mode=max --build-arg IMAGE_BUILD_DATE=$(date --iso-8601=seconds) --tag ${CI_REGISTRY_IMAGE}:${TAG} --push .
+        - >
+            docker buildx build
+            --provenance=false
+            --progress=plain
+            --platform linux/amd64
+            --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:cache
+            --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:latest
+            --cache-to type=inline
+            --cache-to type=registry,ref=${CI_REGISTRY_IMAGE}:cache,mode=max
+            --build-arg IMAGE_BUILD_DATE=$(date --iso-8601=seconds)
+            --tag ${CI_REGISTRY_IMAGE}:${TAG}
+            --push .
 
     artifacts:
         paths:
@@ -66,19 +79,18 @@ test-prepare:
 
     cache:
         - key:
-            files:
-                - pyproject.toml
-                - .gitlab-ci.yml
-            prefix: ${CI_COMMIT_REF_SLUG}-venv
+              files:
+                  - pyproject.toml
+                  - .gitlab-ci.yml
+              prefix: ${CI_COMMIT_REF_SLUG}-venv
           paths:
-            - .venv
+              - .venv
           policy: pull-push
 
         - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
           paths:
-            - .uv_python
+              - .uv_python
           policy: pull-push
-
 
 test-normal:
     stage: test
@@ -86,11 +98,13 @@ test-normal:
     needs:
         - test-prepare
 
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        
     script:
-        - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/bot_config.git
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
         - mv bot_config/mercari_bot.yaml config.yaml
-        - git clone https://gitlab.green-rabbit.net/kimata/font.git private_font
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
         - mv private_font/* font
 
         - export LANG=ja_JP.UTF-8
@@ -101,29 +115,28 @@ test-normal:
 
     cache:
         - key:
-            files:
-                - pyproject.toml
-                - .gitlab-ci.yml
-            prefix: ${CI_COMMIT_REF_SLUG}-venv
+              files:
+                  - pyproject.toml
+                  - .gitlab-ci.yml
+              prefix: ${CI_COMMIT_REF_SLUG}-venv
           paths:
-            - .venv
+              - .venv
           policy: pull
 
         - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
           paths:
-            - .uv_python
+              - .uv_python
           policy: pull
 
         - key: ${CI_PROJECT_NAME}-selenium
           paths:
-            - data/chrome
+              - data/chrome
           policy: pull-push
 
     artifacts:
         when: always
         paths:
             - data/debug/**
-
 
 tag-latest:
     stage: tag-latest
@@ -153,8 +166,20 @@ deploy:
         - job: test-normal
           artifacts: false
 
+    image:
+        name: gitlab.green-rabbit.net:5050/kimata/local-kubectl:250715_c88f3965
+
     script:
-        - 'echo "OK (CronJob で imagePullPolicy: Always で実行されるので自動的に latest が deploy される)"'
+        - 'IMAGE="${CI_REGISTRY_IMAGE}:${TAG}"'
+        - 'echo "Deploying image: $IMAGE"'
+
+        - kubectl config get-contexts
+        - kubectl config use-context kimata/mercari-bot:pod-rollout
+
+        - kubectl -n bot set image deployment/mrcari-bot-deployment mercari-bot=${IMAGE}
+        - kubectl -n bot rollout status deployment/mercari-bot-deployment --timeout=300s
+
+        - 'echo "✓ All deployments updated successfully to $TAG"'
 
     rules:
         # NOTE: 自動実行ではデプロイしない
@@ -164,12 +189,11 @@ deploy:
           when: never
         - when: on_success
 
-
 renovate:
     stage: renovate
     image:
-        name: registry.green-rabbit.net:5000/kimata/local_renovate:36
-        entrypoint: [""]
+        name: gitlab.green-rabbit.net:5050/kimata/local-renovate:250715_3b8866ff
+
     script:
         - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
 
@@ -178,4 +202,4 @@ renovate:
           when: never
         - if: '$CI_PIPELINE_SOURCE == "schedule"'
         - changes:
-            - renovate.json
+              - renovate.json
