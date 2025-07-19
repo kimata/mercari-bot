@@ -173,16 +173,7 @@ deploy:
         name: gitlab.green-rabbit.net:5050/kimata/local-kubectl:250715_c88f3965
 
     script:
-        - 'IMAGE="${CI_REGISTRY_IMAGE}:${TAG}"'
-        - 'echo "Deploying image: $IMAGE"'
-
-        - kubectl config get-contexts
-        - kubectl config use-context kimata/mercari-bot:pod-rollout
-
-        - kubectl -n bot set image deployment/mrcari-bot-deployment mercari-bot=${IMAGE}
-        - kubectl -n bot rollout status deployment/mercari-bot-deployment --timeout=300s
-
-        - 'echo "✓ All deployments updated successfully to $TAG"'
+        - 'echo "OK. The CronJob references latest, so no action is needed."'
 
     rules:
         # NOTE: 自動実行ではデプロイしない
