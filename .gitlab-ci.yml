@@ -146,6 +146,9 @@ tag-latest:
         - job: test-normal
           artifacts: false
 
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+          
     script:
         - 'echo "Tagging ${CI_REGISTRY_IMAGE}:${TAG} as latest"'
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
