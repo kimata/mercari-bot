@@ -3,7 +3,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-        tty: true
+        tty: false
         stdin_open: true
         volumes:
             - ./data:/opt/mercari-bot/data
