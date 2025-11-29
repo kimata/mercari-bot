@@ -949,7 +949,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=173bc33cc7c472c25cfeec43098ffbe7c2fb269a" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=a84f8fdbb5489d96adc28b297ab2e406cac72dfb" },
     { name = "pillow", specifier = ">=11.2.1" },
     { name = "pydub", specifier = ">=0.25.1" },
     { name = "selenium", specifier = ">=4.31.0" },
@@ -1076,7 +1076,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.1.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=173bc33cc7c472c25cfeec43098ffbe7c2fb269a#173bc33cc7c472c25cfeec43098ffbe7c2fb269a" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=a84f8fdbb5489d96adc28b297ab2e406cac72dfb#a84f8fdbb5489d96adc28b297ab2e406cac72dfb" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "docopt-ng" },
