@@ -24,6 +24,8 @@ ENV TZ=Asia/Tokyo \
 RUN locale-gen en_US.UTF-8
 RUN locale-gen ja_JP.UTF-8
 
+# NOTE: Chromeは頻繁に更新されるため、キャッシュバスターを使用して最新版を取得する
+ARG CHROME_CACHE_BUSTER
 RUN curl -O https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \

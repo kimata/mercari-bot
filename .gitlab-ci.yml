@@ -54,6 +54,7 @@ build-image:
             --cache-to type=inline
             --cache-to type=registry,ref=${CI_REGISTRY_IMAGE}:cache,mode=max
             --build-arg IMAGE_BUILD_DATE=$(date --iso-8601=seconds)
+            --build-arg CHROME_CACHE_BUSTER=$(date +%Y%W)
             --tag ${CI_REGISTRY_IMAGE}:${TAG}
             --push .
 
