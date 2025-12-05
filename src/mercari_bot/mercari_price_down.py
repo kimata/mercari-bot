@@ -222,5 +222,4 @@ def execute(config, profile, data_path, dump_path, debug_mode):
             )
         return -1
     finally:
-        driver.close()
-        driver.quit()
+        my_lib.selenium_util.quit_driver_gracefully(driver)
