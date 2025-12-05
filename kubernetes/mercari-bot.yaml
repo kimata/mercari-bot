@@ -54,9 +54,12 @@ spec:
                         - name: mercari-inventory-control
                           image: registry.green-rabbit.net:5000/kimata/mercari-bot:latest
                           imagePullPolicy: Always
+                          
                           volumeMounts:
                             - mountPath: /opt/mercari-bot/data
                               name: data
+                            - mountPath: /dev/shm
+                              name: shm
                           resources:
                             requests:
                                 memory: 1Gi
@@ -67,6 +70,10 @@ spec:
                         - name: data
                           persistentVolumeClaim:
                             claimName: pvc-bot-mercari-inventory-control
+                        - name: shm
+                          emptyDir:
+                            medium: Memory
+                            sizeLimit: 2Gi
                     dnsPolicy: Default
                     nodeSelector:
                         kubernetes.io/hostname: engine
