@@ -3,21 +3,22 @@
 メルカリに出品中のアイテムの価格を自動的に値下げします。
 
 Usage:
-  app.py [-c CONFIG] [-l] [-d]
+  app.py [-c CONFIG] [-l] [-D]
 
 Options:
   -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。 [default: config.yaml]
   -l                : 動作ログを Slack やメールで通知します。
-  -d                : デバッグモードで動作します。(価格変更は行いません)
+  -D                : デバッグモードで動作します。(価格変更は行いません)
 """
 
 import logging
 import pathlib
 import sys
 
-import mercari_bot.mercari_price_down
 import my_lib.notify.mail
 import my_lib.notify.slack
+
+import mercari_bot.mercari_price_down
 
 SCHEMA_CONFIG = "config.schema"
 
@@ -62,7 +63,7 @@ if __name__ == "__main__":
 
     config_file = args["-c"]
     notify_log = args["-l"]
-    debug_mode = args["-d"]
+    debug_mode = args["-D"]
 
     log_level = logging.DEBUG if debug_mode else logging.INFO
 
