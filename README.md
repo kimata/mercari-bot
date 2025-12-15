@@ -143,7 +143,7 @@ python src/app.py
 
 ```bash
 # デバッグモード（実際に値下げせず確認のみ）
-uv run python src/app.py -d
+uv run python src/app.py -D
 
 # 設定ファイルを指定
 uv run python src/app.py -c custom-config.yaml
