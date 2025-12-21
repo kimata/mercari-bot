@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import my_lib.config
-from my_lib.notify.mail import MailConfig, MailSmtpConfig
-from my_lib.notify.slack import SlackConfig, parse_slack_config
+from my_lib.notify.mail import MailConfig, parse_config as parse_mail_config
+from my_lib.notify.slack import SlackConfig, parse_config as parse_slack_config
 from my_lib.store.mercari.config import (
     LineLoginConfig,
     MercariLoginConfig,
@@ -91,19 +91,6 @@ def _parse_data(data: dict[str, Any]) -> DataConfig:
     )
 
 
-def _parse_mail(data: dict[str, Any]) -> MailConfig:
-    return MailConfig(
-        smtp=MailSmtpConfig(
-            host=data["smtp"]["host"],
-            port=data["smtp"]["port"],
-            user=data["user"],
-            password=data["pass"],
-        ),
-        from_address=data["from"],
-        to=data["to"],
-    )
-
-
 def load(config_path: str, schema_path: str | None = None) -> AppConfig:
     """設定ファイルを読み込んで AppConfig を返す"""
     raw_config = my_lib.config.load(config_path, schema_path)
@@ -112,5 +99,5 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
         profile=[_parse_profile(p) for p in raw_config["profile"]],
         slack=parse_slack_config(raw_config["slack"]),
         data=_parse_data(raw_config["data"]),
-        mail=_parse_mail(raw_config["mail"]) if "mail" in raw_config else None,
+        mail=parse_mail_config(raw_config["mail"]) if "mail" in raw_config else None,
     )
