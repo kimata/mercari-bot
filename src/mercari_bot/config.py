@@ -9,6 +9,12 @@ from typing import Any
 import my_lib.config
 from my_lib.notify.mail import MailConfig, MailSmtpConfig
 from my_lib.notify.slack import SlackConfig, parse_slack_config
+from my_lib.store.mercari.config import (
+    LineLoginConfig,
+    MercariLoginConfig,
+    parse_line_login,
+    parse_mercari_login,
+)
 
 
 @dataclass(frozen=True)
@@ -25,22 +31,6 @@ class IntervalConfig:
     """更新間隔の設定"""
 
     hour: int
-
-
-@dataclass(frozen=True)
-class MercariLoginConfig:
-    """メルカリ ログイン情報"""
-
-    user: str
-    password: str
-
-
-@dataclass(frozen=True)
-class LineLoginConfig:
-    """LINE ログイン情報"""
-
-    user: str
-    password: str
 
 
 @dataclass(frozen=True)
@@ -84,27 +74,13 @@ def _parse_interval(data: dict[str, Any]) -> IntervalConfig:
     return IntervalConfig(hour=data["hour"])
 
 
-def _parse_mercari_login(data: dict[str, Any]) -> MercariLoginConfig:
-    return MercariLoginConfig(
-        user=data["user"],
-        password=data["pass"],
-    )
-
-
-def _parse_line_login(data: dict[str, Any]) -> LineLoginConfig:
-    return LineLoginConfig(
-        user=data["user"],
-        password=data["pass"],
-    )
-
-
 def _parse_profile(data: dict[str, Any]) -> ProfileConfig:
     return ProfileConfig(
         name=data["name"],
-        mercari=_parse_mercari_login(data),
+        mercari=parse_mercari_login(data),
         discount=[_parse_discount(d) for d in data["discount"]],
         interval=_parse_interval(data["interval"]),
-        line=_parse_line_login(data["line"]),
+        line=parse_line_login(data["line"]),
     )
 
 

@@ -232,8 +232,8 @@ def execute(
         my_lib.store.mercari.login.execute(
             driver,
             wait,
-            profile.line.user,
-            profile.line.password,
+            profile.mercari,
+            profile.line,
             slack_config_dict,
             dump_path,
         )
