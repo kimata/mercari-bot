@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import my_lib.config
+from my_lib.notify.mail import MailConfig, MailSmtpConfig
+from my_lib.notify.slack import SlackConfig, parse_slack_config
 
 
 @dataclass(frozen=True)
@@ -46,71 +48,11 @@ class ProfileConfig:
 
 
 @dataclass(frozen=True)
-class SlackChannelConfig:
-    """Slack チャンネル設定"""
-
-    name: str
-    id: str | None = None  # info チャンネルでは id は不要
-
-
-@dataclass(frozen=True)
-class SlackInfoConfig:
-    """Slack 情報通知設定"""
-
-    channel: SlackChannelConfig
-
-
-@dataclass(frozen=True)
-class SlackCaptchaConfig:
-    """Slack CAPTCHA 通知設定"""
-
-    channel: SlackChannelConfig
-
-
-@dataclass(frozen=True)
-class SlackErrorConfig:
-    """Slack エラー通知設定"""
-
-    channel: SlackChannelConfig
-    interval_min: int
-
-
-@dataclass(frozen=True)
-class SlackConfig:
-    """Slack 設定"""
-
-    bot_token: str
-    from_name: str
-    info: SlackInfoConfig
-    captcha: SlackCaptchaConfig
-    error: SlackErrorConfig
-
-
-@dataclass(frozen=True)
 class DataConfig:
     """データパス設定"""
 
     selenium: str
     dump: str
-
-
-@dataclass(frozen=True)
-class MailSmtpConfig:
-    """SMTP 設定"""
-
-    host: str
-    port: int
-
-
-@dataclass(frozen=True)
-class MailConfig:
-    """メール設定"""
-
-    smtp: MailSmtpConfig
-    user: str
-    password: str
-    from_address: str
-    to: str
 
 
 @dataclass(frozen=True)
@@ -153,38 +95,6 @@ def _parse_profile(data: dict[str, Any]) -> ProfileConfig:
     )
 
 
-def _parse_slack_channel(data: dict[str, Any]) -> SlackChannelConfig:
-    return SlackChannelConfig(
-        name=data["name"],
-        id=data.get("id"),
-    )
-
-
-def _parse_slack_info(data: dict[str, Any]) -> SlackInfoConfig:
-    return SlackInfoConfig(channel=_parse_slack_channel(data["channel"]))
-
-
-def _parse_slack_captcha(data: dict[str, Any]) -> SlackCaptchaConfig:
-    return SlackCaptchaConfig(channel=_parse_slack_channel(data["channel"]))
-
-
-def _parse_slack_error(data: dict[str, Any]) -> SlackErrorConfig:
-    return SlackErrorConfig(
-        channel=_parse_slack_channel(data["channel"]),
-        interval_min=data["interval_min"],
-    )
-
-
-def _parse_slack(data: dict[str, Any]) -> SlackConfig:
-    return SlackConfig(
-        bot_token=data["bot_token"],
-        from_name=data["from"],
-        info=_parse_slack_info(data["info"]),
-        captcha=_parse_slack_captcha(data["captcha"]),
-        error=_parse_slack_error(data["error"]),
-    )
-
-
 def _parse_data(data: dict[str, Any]) -> DataConfig:
     return DataConfig(
         selenium=data["selenium"],
@@ -194,9 +104,12 @@ def _parse_data(data: dict[str, Any]) -> DataConfig:
 
 def _parse_mail(data: dict[str, Any]) -> MailConfig:
     return MailConfig(
-        smtp=MailSmtpConfig(host=data["smtp"]["host"], port=data["smtp"]["port"]),
-        user=data["user"],
-        password=data["pass"],
+        smtp=MailSmtpConfig(
+            host=data["smtp"]["host"],
+            port=data["smtp"]["port"],
+            user=data["user"],
+            password=data["pass"],
+        ),
         from_address=data["from"],
         to=data["to"],
     )
@@ -208,7 +121,7 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
 
     return AppConfig(
         profile=[_parse_profile(p) for p in raw_config["profile"]],
-        slack=_parse_slack(raw_config["slack"]),
+        slack=parse_slack_config(raw_config["slack"]),
         data=_parse_data(raw_config["data"]),
         mail=_parse_mail(raw_config["mail"]) if "mail" in raw_config else None,
     )

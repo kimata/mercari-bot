@@ -252,16 +252,13 @@ def execute(
         my_lib.selenium_util.clean_dump(dump_path)
 
         my_lib.notify.slack.error_with_image(
-            config.slack.bot_token,
-            config.slack.error.channel.name,
-            config.slack.error.channel.id,
-            config.slack.from_name,
+            config.slack,
+            "メルカリ値下げエラー",
             traceback.format_exc(),
             {
                 "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
                 "text": "エラー時のスクリーンショット",
             },
-            interval_min=config.slack.error.interval_min,
         )
         return -1
     finally:

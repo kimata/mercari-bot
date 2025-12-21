@@ -46,18 +46,11 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
     if notify_log and log_str_io is not None:
         if config.mail is not None:
             my_lib.notify.mail.send(
-                {
-                    "smtp": {"host": config.mail.smtp.host, "port": config.mail.smtp.port},
-                    "user": config.mail.user,
-                    "pass": config.mail.password,
-                    "from": config.mail.from_address,
-                    "to": config.mail.to,
-                },
+                config.mail,
                 "<br />".join(log_str_io.getvalue().splitlines()),
             )
         my_lib.notify.slack.info(
-            config.slack.bot_token,
-            config.slack.info.channel.name,
+            config.slack,
             "Mercari price change",
             log_str_io.getvalue(),
         )
