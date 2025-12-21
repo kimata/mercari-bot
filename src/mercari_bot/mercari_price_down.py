@@ -186,8 +186,8 @@ def _build_profile_dict(profile: ProfileConfig) -> dict[str, Any]:
     """my_lib.store.mercari.scrape 用に profile を辞書形式に変換"""
     return {
         "name": profile.name,
-        "user": profile.user,
-        "pass": profile.password,
+        "user": profile.mercari.user,
+        "pass": profile.mercari.password,
         "discount": [
             {
                 "favorite_count": d.favorite_count,

@@ -28,7 +28,15 @@ class IntervalConfig:
 
 
 @dataclass(frozen=True)
-class LineConfig:
+class MercariLoginConfig:
+    """メルカリ ログイン情報"""
+
+    user: str
+    password: str
+
+
+@dataclass(frozen=True)
+class LineLoginConfig:
     """LINE ログイン情報"""
 
     user: str
@@ -40,11 +48,10 @@ class ProfileConfig:
     """プロファイル設定"""
 
     name: str
-    user: str
-    password: str
+    mercari: MercariLoginConfig
     discount: list[DiscountConfig]
     interval: IntervalConfig
-    line: LineConfig
+    line: LineLoginConfig
 
 
 @dataclass(frozen=True)
@@ -77,8 +84,15 @@ def _parse_interval(data: dict[str, Any]) -> IntervalConfig:
     return IntervalConfig(hour=data["hour"])
 
 
-def _parse_line(data: dict[str, Any]) -> LineConfig:
-    return LineConfig(
+def _parse_mercari_login(data: dict[str, Any]) -> MercariLoginConfig:
+    return MercariLoginConfig(
+        user=data["user"],
+        password=data["pass"],
+    )
+
+
+def _parse_line_login(data: dict[str, Any]) -> LineLoginConfig:
+    return LineLoginConfig(
         user=data["user"],
         password=data["pass"],
     )
@@ -87,11 +101,10 @@ def _parse_line(data: dict[str, Any]) -> LineConfig:
 def _parse_profile(data: dict[str, Any]) -> ProfileConfig:
     return ProfileConfig(
         name=data["name"],
-        user=data["user"],
-        password=data["pass"],
+        mercari=_parse_mercari_login(data),
         discount=[_parse_discount(d) for d in data["discount"]],
         interval=_parse_interval(data["interval"]),
-        line=_parse_line(data["line"]),
+        line=_parse_line_login(data["line"]),
     )
 
 
