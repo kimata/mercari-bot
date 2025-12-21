@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     build-essential \
     git \
     language-pack-ja \
+    tzdata \
     fonts-noto-cjk \
     smem
 
