@@ -169,25 +169,6 @@ def _execute_item(
     logging.info("価格を変更しました。(%s円 -> %s円)", f"{item['price']:,}", f"{new_total_price:,}")
 
 
-def _build_profile_dict(profile: ProfileConfig) -> dict[str, Any]:
-    """my_lib.store.mercari.scrape 用に profile を辞書形式に変換"""
-    return {
-        "name": profile.name,
-        "user": profile.mercari.user,
-        "pass": profile.mercari.password,
-        "discount": [
-            {
-                "favorite_count": d.favorite_count,
-                "step": d.step,
-                "threshold": d.threshold,
-            }
-            for d in profile.discount
-        ],
-        "interval": {"hour": profile.interval.hour},
-        "line": {"user": profile.line.user, "pass": profile.line.password},
-    }
-
-
 def execute(
     config: AppConfig,
     profile: ProfileConfig,
@@ -201,14 +182,10 @@ def execute(
 
     wait = WebDriverWait(driver, _WAIT_TIMEOUT_SEC)
 
-    # NOTE: my_lib.store.mercari.scrape は辞書形式を期待するため変換
-    profile_dict = _build_profile_dict(profile)
-
     # NOTE: execute_item に profile を渡すためのラッパー
     def item_handler(
         driver: WebDriver,
         wait: WebDriverWait,  # type: ignore[type-arg]
-        scrape_config: dict[str, Any],  # noqa: ARG001
         item: dict[str, Any],
         debug_mode: bool,
     ) -> None:
@@ -225,7 +202,7 @@ def execute(
         )
 
         my_lib.store.mercari.scrape.iter_items_on_display(
-            driver, wait, profile_dict, debug_mode, [item_handler]
+            driver, wait, debug_mode, [item_handler]
         )
 
         my_lib.selenium_util.log_memory_usage(driver)
