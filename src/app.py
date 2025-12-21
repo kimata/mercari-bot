@@ -11,6 +11,9 @@ Options:
   -D                : デバッグモードで動作します。(価格変更は行いません)
 """
 
+from __future__ import annotations
+
+import io
 import logging
 import pathlib
 import sys
@@ -19,36 +22,45 @@ import my_lib.notify.mail
 import my_lib.notify.slack
 
 import mercari_bot.mercari_price_down
+from mercari_bot.config import AppConfig
 
 SCHEMA_CONFIG = "config.schema"
 
 
-def execute(config, notify_log, debug_mode, log_str_io):
+def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: io.StringIO | None) -> int:
     ret_code = 0
 
     logging.info("Start")
 
-    for profile in config["profile"]:
+    for profile in config.profile:
         ret_code += mercari_bot.mercari_price_down.execute(
             config,
             profile,
-            pathlib.Path(config["data"]["selenium"]),
-            pathlib.Path(config["data"]["dump"]),
+            pathlib.Path(config.data.selenium),
+            pathlib.Path(config.data.dump),
             debug_mode,
         )
 
     logging.info("Finish!")
 
-    if notify_log:
-        if "mail" in config:
-            my_lib.notify.mail.send(config["mail"], "<br />".join(log_str_io.getvalue().splitlines()))
-        if "slack" in config:
-            my_lib.notify.slack.info(
-                config["slack"]["bot_token"],
-                config["slack"]["info"]["channel"]["name"],
-                "Mercari price change",
-                log_str_io.getvalue(),
+    if notify_log and log_str_io is not None:
+        if config.mail is not None:
+            my_lib.notify.mail.send(
+                {
+                    "smtp": {"host": config.mail.smtp.host, "port": config.mail.smtp.port},
+                    "user": config.mail.user,
+                    "pass": config.mail.password,
+                    "from": config.mail.from_address,
+                    "to": config.mail.to,
+                },
+                "<br />".join(log_str_io.getvalue().splitlines()),
             )
+        my_lib.notify.slack.info(
+            config.slack.bot_token,
+            config.slack.info.channel.name,
+            "Mercari price change",
+            log_str_io.getvalue(),
+        )
 
     return ret_code
 
@@ -56,8 +68,10 @@ def execute(config, notify_log, debug_mode, log_str_io):
 ######################################################################
 if __name__ == "__main__":
     import docopt
-    import my_lib.config
+
     import my_lib.logger
+
+    import mercari_bot.config
 
     args = docopt.docopt(__doc__)
 
@@ -69,7 +83,7 @@ if __name__ == "__main__":
 
     log_str_io = my_lib.logger.init("bot.mercari.inventory", level=log_level, is_str_log=True)
 
-    config = my_lib.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
+    config = mercari_bot.config.load(config_file, SCHEMA_CONFIG)
 
     ret_code = execute(config, notify_log, debug_mode, log_str_io)
 
