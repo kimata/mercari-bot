@@ -17,19 +17,18 @@ import my_lib.store.mercari.login
 import my_lib.store.mercari.scrape
 import PIL.Image
 import selenium.webdriver.support.expected_conditions as EC
+from mercari_bot.config import AppConfig, ProfileConfig
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 
-from mercari_bot.config import AppConfig, ProfileConfig
-
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
 
-WAIT_TIMEOUT_SEC = 15
+_WAIT_TIMEOUT_SEC = 15
 
 
-def get_modified_hour(driver: WebDriver) -> int:
+def _get_modified_hour(driver: WebDriver) -> int:
     modified_text = driver.find_element(
         By.XPATH,
         '//div[@id="item-info"]//div[contains(@class,"merShowMore")]'
@@ -50,7 +49,9 @@ def get_modified_hour(driver: WebDriver) -> int:
         return -1
 
 
-def get_discount_step(profile: ProfileConfig, price: int, shipping_fee: int, favorite_count: int) -> int | None:
+def _get_discount_step(
+    profile: ProfileConfig, price: int, shipping_fee: int, favorite_count: int
+) -> int | None:
     for discount_info in sorted(profile.discount, key=lambda x: x.favorite_count, reverse=True):
         if favorite_count >= discount_info.favorite_count:
             if price >= discount_info.threshold:
@@ -66,7 +67,7 @@ def get_discount_step(profile: ProfileConfig, price: int, shipping_fee: int, fav
     return None
 
 
-def execute_item(
+def _execute_item(
     driver: WebDriver,
     wait: WebDriverWait,  # type: ignore[type-arg]
     profile: ProfileConfig,
@@ -77,7 +78,7 @@ def execute_item(
         logging.info("公開停止中のため、スキップします。")
         return
 
-    modified_hour = get_modified_hour(driver)
+    modified_hour = _get_modified_hour(driver)
 
     if modified_hour < profile.interval.hour:
         logging.info("更新してから %d 時間しか経過していないため、スキップします。", modified_hour)
@@ -119,7 +120,7 @@ def execute_item(
     if cur_price != price:
         raise RuntimeError("ページ遷移中に価格が変更されました。")  # noqa: EM101
 
-    discount_step = get_discount_step(profile, price, shipping_fee, item["favorite"])
+    discount_step = _get_discount_step(profile, price, shipping_fee, item["favorite"])
     if discount_step is None:
         return
 
@@ -168,20 +169,6 @@ def execute_item(
     logging.info("価格を変更しました。(%s円 -> %s円)", f"{item['price']:,}", f"{new_total_price:,}")
 
 
-def _build_slack_config_dict(config: AppConfig) -> dict[str, Any]:
-    """my_lib.store.mercari.login 用に Slack 設定を辞書形式に変換"""
-    return {
-        "bot_token": config.slack.bot_token,
-        "from": config.slack.from_name,
-        "captcha": {
-            "channel": {
-                "name": config.slack.captcha.channel.name,
-                "id": config.slack.captcha.channel.id,
-            }
-        },
-    }
-
-
 def _build_profile_dict(profile: ProfileConfig) -> dict[str, Any]:
     """my_lib.store.mercari.scrape 用に profile を辞書形式に変換"""
     return {
@@ -212,10 +199,9 @@ def execute(
 
     my_lib.selenium_util.clear_cache(driver)
 
-    wait = WebDriverWait(driver, WAIT_TIMEOUT_SEC)
+    wait = WebDriverWait(driver, _WAIT_TIMEOUT_SEC)
 
-    # NOTE: my_lib の関数は辞書形式を期待するため変換
-    slack_config_dict = _build_slack_config_dict(config)
+    # NOTE: my_lib.store.mercari.scrape は辞書形式を期待するため変換
     profile_dict = _build_profile_dict(profile)
 
     # NOTE: execute_item に profile を渡すためのラッパー
@@ -226,7 +212,7 @@ def execute(
         item: dict[str, Any],
         debug_mode: bool,
     ) -> None:
-        execute_item(driver, wait, profile, item, debug_mode)
+        _execute_item(driver, wait, profile, item, debug_mode)
 
     try:
         my_lib.store.mercari.login.execute(
@@ -234,7 +220,7 @@ def execute(
             wait,
             profile.mercari,
             profile.line,
-            slack_config_dict,
+            config.slack,
             dump_path,
         )
 
