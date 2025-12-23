@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import my_lib.config
-from my_lib.notify.mail import MailConfig, parse_config as parse_mail_config
+from my_lib.notify.mail import MailConfig, MailEmptyConfig, parse_config as parse_mail_config
 from my_lib.notify.slack import (
     SlackConfig,
     SlackEmptyConfig,
@@ -63,7 +63,7 @@ class AppConfig:
     profile: list[ProfileConfig]
     slack: SlackConfig | SlackEmptyConfig
     data: DataConfig
-    mail: MailConfig | None = None
+    mail: MailConfig | MailEmptyConfig
 
 
 def _parse_discount(data: dict[str, Any]) -> DiscountConfig:
@@ -108,5 +108,5 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
         profile=[_parse_profile(p) for p in raw_config["profile"]],
         slack=slack_config,
         data=_parse_data(raw_config["data"]),
-        mail=parse_mail_config(raw_config["mail"]) if "mail" in raw_config else None,
+        mail=parse_mail_config(raw_config.get("mail", {})),
     )
