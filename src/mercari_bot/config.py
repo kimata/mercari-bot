@@ -8,7 +8,11 @@ from typing import Any
 
 import my_lib.config
 from my_lib.notify.mail import MailConfig, parse_config as parse_mail_config
-from my_lib.notify.slack import SlackConfig, parse_config as parse_slack_config
+from my_lib.notify.slack import (
+    SlackConfig,
+    SlackEmptyConfig,
+    parse_config as parse_slack_config,
+)
 from my_lib.store.mercari.config import (
     LineLoginConfig,
     MercariLoginConfig,
@@ -57,7 +61,7 @@ class AppConfig:
     """アプリケーション設定"""
 
     profile: list[ProfileConfig]
-    slack: SlackConfig
+    slack: SlackConfig | SlackEmptyConfig
     data: DataConfig
     mail: MailConfig | None = None
 
@@ -95,9 +99,14 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
     """設定ファイルを読み込んで AppConfig を返す"""
     raw_config = my_lib.config.load(config_path, schema_path)
 
+    slack_config = parse_slack_config(raw_config["slack"])
+    if not isinstance(slack_config, (SlackConfig, SlackEmptyConfig)):
+        msg = "Slack 設定には info, captcha, error の全てが必要です（または全て省略）"
+        raise ValueError(msg)
+
     return AppConfig(
         profile=[_parse_profile(p) for p in raw_config["profile"]],
-        slack=parse_slack_config(raw_config["slack"]),
+        slack=slack_config,
         data=_parse_data(raw_config["data"]),
         mail=parse_mail_config(raw_config["mail"]) if "mail" in raw_config else None,
     )

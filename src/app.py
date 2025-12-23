@@ -20,6 +20,7 @@ import sys
 
 import my_lib.notify.mail
 import my_lib.notify.slack
+from my_lib.notify.slack import SlackEmptyConfig
 
 import mercari_bot.mercari_price_down
 from mercari_bot.config import AppConfig
@@ -49,11 +50,12 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
                 config.mail,
                 "<br />".join(log_str_io.getvalue().splitlines()),
             )
-        my_lib.notify.slack.info(
-            config.slack,
-            "Mercari price change",
-            log_str_io.getvalue(),
-        )
+        if not isinstance(config.slack, SlackEmptyConfig):
+            my_lib.notify.slack.info(
+                config.slack,
+                "Mercari price change",
+                log_str_io.getvalue(),
+            )
 
     return ret_code
 
