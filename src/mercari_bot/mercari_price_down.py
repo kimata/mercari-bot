@@ -12,7 +12,6 @@ import traceback
 from typing import TYPE_CHECKING, Any
 
 import my_lib.notify.slack
-from my_lib.notify.slack import SlackEmptyConfig
 import my_lib.selenium_util
 import my_lib.store.mercari.login
 import my_lib.store.mercari.scrape
@@ -215,16 +214,15 @@ def execute(
         my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
         my_lib.selenium_util.clean_dump(dump_path)
 
-        if not isinstance(config.slack, SlackEmptyConfig):
-            my_lib.notify.slack.error_with_image(
-                config.slack,
-                "メルカリ値下げエラー",
-                traceback.format_exc(),
-                {
-                    "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
-                    "text": "エラー時のスクリーンショット",
-                },
-            )
+        my_lib.notify.slack.error_with_image(
+            config.slack,
+            "メルカリ値下げエラー",
+            traceback.format_exc(),
+            {
+                "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
+                "text": "エラー時のスクリーンショット",
+            },
+        )
         return -1
     finally:
         my_lib.selenium_util.quit_driver_gracefully(driver)
