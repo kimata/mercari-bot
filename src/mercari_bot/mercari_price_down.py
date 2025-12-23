@@ -201,9 +201,7 @@ def execute(
             dump_path,
         )
 
-        my_lib.store.mercari.scrape.iter_items_on_display(
-            driver, wait, debug_mode, [item_handler]
-        )
+        my_lib.store.mercari.scrape.iter_items_on_display(driver, wait, debug_mode, [item_handler])
 
         my_lib.selenium_util.log_memory_usage(driver)
 
