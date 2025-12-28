@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@14389412c73a17016efbf6cea4814bd697f1e2a3",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@b1d3237bebecd7b2f0aed62b07db9bdcbf6e7a9d",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -61,7 +61,7 @@ allow-direct-references = true
 minversion = "6.0"
 # E2E テストはデフォルトで除外（外部サーバーが必要なため）
 # E2E テスト実行: uv run pytest tests/e2e/ --host <host> --port <port>
-addopts = "--verbose --timeout=300 --durations=10 --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys --junit-xml=reports/junit-report.xml --html=reports/pytest.html --self-contained-html --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml:reports/coverage.xml -n 4 --ignore=tests/e2e"
+addopts = "--verbose --timeout=300 --durations=10 --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys --junit-xml=reports/junit-report.xml --html=reports/pytest.html --self-contained-html --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml:reports/coverage.xml --cov-report=lcov:reports/coverage.lcov --numprocesses=auto --ignore=tests/e2e"
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:datetime\\.datetime\\.utcfromtimestamp\\(\\) is deprecated:DeprecationWarning",

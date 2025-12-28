@@ -72,18 +72,70 @@ src/
 
 ### インポートスタイル
 
+`from xxx import yyy` は基本的に使用せず、`import xxx` としてモジュールをインポートし、参照時は `xxx.yyy` と完全修飾名で記述する：
+
 ```python
-# NG: from xxx import yyy
-# OK: import xxx として xxx.yyy でアクセス
+# 推奨
 import my_lib.selenium_util
 import my_lib.store.mercari.login
+
+driver = my_lib.selenium_util.create_driver(...)
+
+# 非推奨
+from my_lib.selenium_util import create_driver
+
+driver = create_driver(...)
 ```
+
+これにより、関数やクラスがどのモジュールに属しているかが明確になり、コードの可読性と保守性が向上する。
 
 例外: dataclass や型定義は直接インポート可
 
 ```python
 from mercari_bot.config import AppConfig, ProfileConfig
 ```
+
+### 型アノテーションと型情報のないライブラリ
+
+型情報を持たないライブラリを使用する場合、大量の `# type: ignore[union-attr]` を記載する代わりに、変数に `Any` 型を明示的に指定する：
+
+```python
+from typing import Any
+
+# 推奨: Any 型を明示して type: ignore を不要にする
+result: Any = some_untyped_lib.call()
+result.method1()
+result.method2()
+
+# 非推奨: 大量の type: ignore コメント
+result = some_untyped_lib.call()  # type: ignore[union-attr]
+result.method1()  # type: ignore[union-attr]
+result.method2()  # type: ignore[union-attr]
+```
+
+これにより、コードの可読性を維持しつつ型チェッカーのエラーを抑制できる。
+
+### pyright エラーへの対処方針
+
+pyright のエラー対策として、各行に `# type: ignore` コメントを記載して回避するのは**最後の手段**とする。
+
+**優先順位：**
+1. **型推論できるようにコードを修正する** - 変数の初期化時に型が明確になるようにする
+2. **型アノテーションを追加する** - 関数の引数や戻り値、変数に適切な型を指定する
+3. **Any 型を使用する** - 型情報のないライブラリの場合（上記セクション参照）
+4. **`# type: ignore` コメント** - 上記で解決できない場合の最終手段
+
+```python
+# 推奨: 型推論可能なコード
+items: list[str] = []
+items.append("value")
+
+# 非推奨: type: ignore の多用
+items = []  # type: ignore[var-annotated]
+items.append("value")  # type: ignore[union-attr]
+```
+
+**例外：** テストコードでは、モックやフィクスチャの都合上 `# type: ignore` の使用を許容する。
 
 ### CLI
 

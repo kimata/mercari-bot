@@ -11,6 +11,7 @@ import time
 import traceback
 from typing import TYPE_CHECKING, Any
 
+import mercari_bot.logic
 import my_lib.notify.slack
 import my_lib.selenium_util
 import my_lib.store.mercari.login
@@ -35,36 +36,7 @@ def _get_modified_hour(driver: WebDriver) -> int:
         '/following-sibling::p[contains(@class, "merText")]',
     ).text
 
-    if re.compile(r"秒前").search(modified_text) or re.compile(r"分前").search(modified_text):
-        return 0
-    elif re.compile(r"時間前").search(modified_text):
-        return int("".join(filter(str.isdigit, modified_text)))
-    elif re.compile(r"日前").search(modified_text):
-        return int("".join(filter(str.isdigit, modified_text))) * 24
-    elif re.compile(r"か月前").search(modified_text):
-        return int("".join(filter(str.isdigit, modified_text))) * 24 * 30
-    elif re.compile(r"半年以上前").search(modified_text):
-        return 24 * 30 * 6
-    else:
-        return -1
-
-
-def _get_discount_step(
-    profile: ProfileConfig, price: int, shipping_fee: int, favorite_count: int
-) -> int | None:
-    for discount_info in sorted(profile.discount, key=lambda x: x.favorite_count, reverse=True):
-        if favorite_count >= discount_info.favorite_count:
-            if price >= discount_info.threshold:
-                return discount_info.step
-            else:
-                logging.info(
-                    "現在価格が%s円 (送料: %s円) のため、スキップします。", f"{price:,}", f"{shipping_fee:,}"
-                )
-
-                return None
-
-    logging.info("イイねの数(%d)が条件を満たさなかったので、スキップします。", favorite_count)
-    return None
+    return mercari_bot.logic.parse_modified_hour(modified_text)
 
 
 def _execute_item(
@@ -120,11 +92,11 @@ def _execute_item(
     if cur_price != price:
         raise RuntimeError("ページ遷移中に価格が変更されました。")  # noqa: EM101
 
-    discount_step = _get_discount_step(profile, price, shipping_fee, item["favorite"])
+    discount_step = mercari_bot.logic.get_discount_step(profile, price, shipping_fee, item["favorite"])
     if discount_step is None:
         return
 
-    new_price = price if debug_mode else int((price - discount_step) / 10) * 10  # 10円単位に丸める
+    new_price = price if debug_mode else mercari_bot.logic.round_price(price - discount_step)
 
     driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(Keys.CONTROL + "a")
     driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(Keys.BACK_SPACE)

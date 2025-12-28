@@ -1,0 +1,98 @@
+name: Test
+on:
+    push:
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+    checks: write
+    pull-requests: write
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        env:
+            TZ: "Asia/Tokyo"
+
+        strategy:
+            matrix:
+                python-version: ["3.11", "3.12", "3.13"]
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - name: Set locale
+              run: |
+                  sudo locale-gen ja_JP.UTF-8
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v5
+              with:
+                  enable-cache: true
+
+            - name: Cache python modules
+              id: cache-python-modules
+              uses: actions/cache@v4
+              env:
+                  cache-name: cache-python-modules
+              with:
+                  path: $HOME/.cache
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('uv.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
+
+            - name: Install Dependencies
+              run: |
+                  uv sync
+
+            - name: Run Tests
+              run: uv run pytest
+
+            - name: Upload coverage to Coveralls
+              uses: coverallsapp/github-action@v2
+              if: matrix.python-version == '3.12'
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  path-to-lcov: reports/coverage.lcov
+
+            - name: Publish Test Results
+              uses: dorny/test-reporter@v1
+              if: success() || failure()
+              with:
+                  name: test results
+                  path: reports/junit-report.xml
+                  reporter: java-junit
+
+            - name: Upload coverage file
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: pytest-${{ matrix.python-version }}
+                  path: reports
+
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v3
+              if: matrix.python-version == '3.12'
+              with:
+                  path: reports
+
+    deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        needs: test
+        if: github.ref == 'refs/heads/master'
+        steps:
+            - name: Download test results
+              id: deployment
+              uses: actions/deploy-pages@v4

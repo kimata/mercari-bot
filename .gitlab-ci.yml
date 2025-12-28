@@ -33,7 +33,7 @@ build-image:
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        
+
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
@@ -90,24 +90,64 @@ test-typecheck:
         - test-prepare
 
     script:
-        - uv run pytest --numprocesses=auto --no-cov --junit-xml=tests/evidence/junit-report.xml tests/test_typecheck.py
+        - uv run python -m pyright src/
+        - uv run mypy src/
 
-    artifacts:
-        when: always
-        paths:
-            - tests/evidence/**
-        reports:
-            junit: tests/evidence/junit-report.xml
-              
-test-normal:
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          paths:
+              - ${UV_CACHE_DIR}
+
+test-walk-through:
     stage: test
 
     needs:
         - test-prepare
 
+    script:
+        - uv run pytest
+
+    coverage: '/TOTAL.*\s+(\d+%)/'
+
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          paths:
+              - ${UV_CACHE_DIR}
+
+    artifacts:
+        when: always
+        paths:
+            - tests/evidence/**
+            - reports/**
+        reports:
+            junit: reports/junit-report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: reports/coverage.xml
+
+test-docker:
+    stage: test
+
+    needs:
+        - generate-tag
+        - build-image
+        - test-walk-through
+
+    script:
+        - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
+        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        - docker run --rm ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
+
+test-dry-run:
+    stage: test
+
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        
+
     script:
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
         - mv bot-config/mercari-bot.yaml config.yaml
@@ -121,9 +161,9 @@ test-normal:
         - uv run python src/app.py -D
 
     cache:
-        - key: ${CI_PROJECT_NAME}-selenium 
-          paths:            
-              - data/chrome 
+        - key: ${CI_PROJECT_NAME}-selenium
+          paths:
+              - data/chrome
 
     artifacts:
         when: always
@@ -135,12 +175,12 @@ tag-latest:
 
     needs:
         - generate-tag
-        - job: test-normal
+        - job: test-walk-through
           artifacts: false
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-          
+
     script:
         - 'echo "Tagging ${CI_REGISTRY_IMAGE}:${TAG} as latest"'
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
@@ -158,8 +198,9 @@ deploy:
 
     needs:
         - generate-tag
-        - job: test-normal
+        - job: test-dry-run
           artifacts: false
+        - job: test-docker
 
     image:
         name: gitlab.green-rabbit.net:5050/kimata/local-kubectl:250715_c88f3965
