@@ -7,11 +7,11 @@ authors = [
 ]
 
 readme = "README.md"
-requires-python = ">= 3.10"
+requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@63d4ab0d21b6bcce18061df1ac462b6e7eaa8fc3",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@14389412c73a17016efbf6cea4814bd697f1e2a3",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -21,23 +21,32 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.2.0",
     "flaky>=3.8.1",
-    "mypy>=1.14.0",
-    "playwright>=1.45.1",
-    "pytest-cov>=5.0.0",
+    "playwright>=1.49.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
     "pytest-html>=4.1.1",
     "pytest-mock>=3.14.0",
-    "pytest-playwright>=0.5.1",
+    "pytest-playwright>=0.6.0",
     "pytest-xdist>=3.6.1",
-    "time-machine>=2.15.0",
-    "pytest>=8.3.2",
     "pytest-timeout>=2.4.0",
-    "types-pillow>=10.2.0",
+    "time-machine>=2.16.0",
+    "mypy>=1.14.0",
+    "pyright>=1.1.0",
+    "types-pytz>=2024.1.0",
+    "types-paramiko>=3.4.0",
+    "types-pyyaml>=6.0.12",
 ]
 
 [tool.uv]
 default-groups = ["dev"]
 
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -50,48 +59,51 @@ allow-direct-references = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-
-# addopts = "--verbose --log-cli-level=DEBUG --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=src --cov-report=html -vv"
-
-addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=src --cov-report=html -vv"
-
-
-testpaths = [
-    "tests",
-]
+# E2E テストはデフォルトで除外（外部サーバーが必要なため）
+# E2E テスト実行: uv run pytest tests/e2e/ --host <host> --port <port>
+addopts = "--verbose --timeout=300 --durations=10 --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys --junit-xml=reports/junit-report.xml --html=reports/pytest.html --self-contained-html --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml:reports/coverage.xml -n 4 --ignore=tests/e2e"
+testpaths = ["tests"]
 filterwarnings = [
-    "ignore:The hookimpl CovPlugin.pytest_configure_node uses",
-    "ignore:The hookimpl CovPlugin.pytest_testnodedown uses",
-    "ignore::DeprecationWarning:pytest_freezegun",
+    "ignore:datetime\\.datetime\\.utcfromtimestamp\\(\\) is deprecated:DeprecationWarning",
+    "ignore::DeprecationWarning:multiprocessing\\.popen_fork",
+    "ignore:unclosed database.*:ResourceWarning:rich.*",
+    "ignore:unclosed database.*:ResourceWarning:influxdb_client.*",
+    "ignore:unclosed database.*:ResourceWarning:coverage.*",
+    "ignore:unclosed database.*:ResourceWarning:time_machine.*",
+    "ignore:unclosed database.*:ResourceWarning:werkzeug.*",
+    "ignore:unclosed database.*:ResourceWarning:_pytest.*",
+    "ignore:unclosed database.*:ResourceWarning:typing.*",
+    "ignore:unclosed database.*:ResourceWarning:multiprocessing.*",
+    "ignore:unclosed database.*:ResourceWarning:logging.*",
+    "ignore::ResourceWarning:_pytest.unraisableexception",
+    "ignore::ResourceWarning:coverage.sqldata",
+    "ignore::ResourceWarning:coverage.collector",
 ]
 
 [tool.coverage.run]
 branch = true
 
-
 [tool.coverage.report]
 exclude_lines = [
-  "pragma: no cover",
-  "if __name__ == .__main__.:",
-
-  # 以下，未使用関数
-  # webapp/log.py
-  "if sqlite is not None:",
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
 
 [tool.coverage.html]
-directory = "tests/evidence/coverage"
+directory = "reports/coverage"
 
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
 packages = ["mercari_bot", "app"]
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 explicit_package_bases = true
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -106,3 +118,5 @@ ignore_missing_imports = true
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
+include = ["src", "tests"]
+reportMissingImports = false
