@@ -109,8 +109,6 @@ test-walk-through:
     script:
         - uv run pytest
 
-    coverage: '/TOTAL.*\s+(\d+%)/'
-
     cache:
         - key:
               files:
@@ -121,13 +119,10 @@ test-walk-through:
     artifacts:
         when: always
         paths:
-            - tests/evidence/**
+            - data/debug/**
             - reports/**
         reports:
             junit: reports/junit-report.xml
-            coverage_report:
-                coverage_format: cobertura
-                path: reports/coverage.xml
 
 test-docker:
     stage: test
