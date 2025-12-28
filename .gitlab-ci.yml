@@ -170,6 +170,8 @@ tag-latest:
 
     needs:
         - generate-tag
+        - job: test-typecheck
+          artifacts: false
         - job: test-walk-through
           artifacts: false
 
@@ -193,6 +195,8 @@ deploy:
 
     needs:
         - generate-tag
+        - job: test-typecheck
+          artifacts: false
         - job: test-dry-run
           artifacts: false
         - job: test-docker
