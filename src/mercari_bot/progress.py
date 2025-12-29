@@ -164,6 +164,26 @@ class ProgressDisplay:
         if self._live is not None:
             self._live.refresh()
 
+    def _get_max_item_name_length(self) -> int:
+        """ステータスバーに表示可能な商品名の最大長を計算する"""
+        # ターミナル幅を取得
+        terminal_width = self._console.width
+
+        # ステータスバーは ratio 1:3:1 で分割
+        # 中央（ステータス）は全体の 3/5
+        status_width = (terminal_width * 3) // 5
+
+        # プレフィックス「🏷️ 処理中: 」の分を引く（絵文字は2文字分として計算）
+        prefix_length = len("🏷️ 処理中: ") + 1  # 絵文字の表示幅補正
+
+        return max(status_width - prefix_length, 10)
+
+    def _truncate_name(self, name: str, max_length: int) -> str:
+        """商品名を指定した長さに省略する"""
+        if len(name) <= max_length:
+            return name
+        return name[: max_length - 3] + "..."
+
     # --- ProgressObserver Protocol の実装 ---
     def on_total_count(self, count: int) -> None:
         """アイテム総数が判明したときに呼ばれる"""
@@ -176,10 +196,9 @@ class ProgressDisplay:
     def on_item_start(self, index: int, total: int, item: dict[str, Any]) -> None:
         """各アイテムの処理開始時に呼ばれる"""
         name = item.get("name", "不明")
-        # 名前が長い場合は省略
-        if len(name) > 20:
-            name = name[:17] + "..."
-        self.set_status(f"処理中: {name}")
+        max_length = self._get_max_item_name_length()
+        name = self._truncate_name(name, max_length)
+        self.set_status(f"🏷️ 処理中: {name}")
 
     def on_item_complete(self, index: int, total: int, item: dict[str, Any]) -> None:
         """各アイテムの処理完了時に呼ばれる"""

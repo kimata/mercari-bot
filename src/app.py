@@ -47,7 +47,7 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
                 progress=progress,
             )
 
-        progress.set_status("全プロファイル完了")
+        progress.set_status("🎉 全プロファイル完了")
     finally:
         progress.stop()
 
@@ -84,7 +84,12 @@ if __name__ == "__main__":
 
     log_level = logging.DEBUG if debug_mode else logging.INFO
 
-    log_str_io = my_lib.logger.init("bot.mercari.inventory", level=log_level, is_str_log=True)
+    # TTY環境ではシンプルなログフォーマットを使用（Rich の表示と干渉しないため）
+    log_format = my_lib.logger.SIMPLE_FORMAT if sys.stdout.isatty() else None
+
+    log_str_io = my_lib.logger.init(
+        "bot.mercari.inventory", level=log_level, is_str_log=True, log_format=log_format
+    )
 
     config = mercari_bot.config.load(config_file, SCHEMA_CONFIG)
 
