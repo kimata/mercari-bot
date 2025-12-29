@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 import mercari_bot.logic
 import my_lib.notify.slack
 import my_lib.selenium_util
+import my_lib.store.mercari.exceptions
 import my_lib.store.mercari.login
 import my_lib.store.mercari.scrape
 import PIL.Image
@@ -178,6 +179,22 @@ def execute(
         my_lib.selenium_util.log_memory_usage(driver)
 
         return 0
+    except my_lib.store.mercari.exceptions.LoginError:
+        logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
+
+        my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
+        my_lib.selenium_util.clean_dump(dump_path)
+
+        my_lib.notify.slack.error_with_image(
+            config.slack,
+            "メルカリログインエラー",
+            traceback.format_exc(),
+            {
+                "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
+                "text": "エラー時のスクリーンショット",
+            },
+        )
+        return -1
     except Exception:
         logging.exception("URL: %s", driver.current_url)
 
