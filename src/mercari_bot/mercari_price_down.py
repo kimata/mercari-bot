@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import mercari_bot.logic
 import mercari_bot.notify_slack
+import mercari_bot.progress
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
 import my_lib.store.mercari.login
@@ -144,7 +145,11 @@ def execute(
     data_path: pathlib.Path,
     dump_path: pathlib.Path,
     debug_mode: bool,
+    progress: mercari_bot.progress.ProgressDisplay | None = None,
 ) -> int:
+    if progress is not None:
+        progress.set_status(f"ブラウザを起動中... ({profile.name})")
+
     driver = my_lib.selenium_util.create_driver(profile.name, data_path)
 
     my_lib.selenium_util.clear_cache(driver)
@@ -161,6 +166,9 @@ def execute(
         _execute_item(driver, wait, profile, item, debug_mode)
 
     try:
+        if progress is not None:
+            progress.set_status(f"ログイン中... ({profile.name})")
+
         my_lib.store.mercari.login.execute(
             driver,
             wait,
@@ -170,19 +178,31 @@ def execute(
             dump_path,
         )
 
-        my_lib.store.mercari.scrape.iter_items_on_display(driver, wait, debug_mode, [item_handler])
+        if progress is not None:
+            progress.set_status(f"出品リスト取得中... ({profile.name})")
+
+        my_lib.store.mercari.scrape.iter_items_on_display(
+            driver, wait, debug_mode, [item_handler], progress_observer=progress
+        )
 
         my_lib.selenium_util.log_memory_usage(driver)
+
+        if progress is not None:
+            progress.set_status(f"完了 ({profile.name})")
 
         return 0
     except my_lib.store.mercari.exceptions.LoginError:
         logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
+        if progress is not None:
+            progress.set_status("ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリログインエラー", driver, dump_path
         )
         return -1
     except Exception:
         logging.exception("URL: %s", driver.current_url)
+        if progress is not None:
+            progress.set_status("エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリ値下げエラー", driver, dump_path
         )

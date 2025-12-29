@@ -22,6 +22,7 @@ import my_lib.notify.mail
 import my_lib.notify.slack
 
 import mercari_bot.mercari_price_down
+import mercari_bot.progress
 from mercari_bot.config import AppConfig
 
 SCHEMA_CONFIG = "config.schema"
@@ -32,14 +33,23 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
 
     logging.info("Start")
 
-    for profile in config.profile:
-        ret_code += mercari_bot.mercari_price_down.execute(
-            config,
-            profile,
-            pathlib.Path(config.data.selenium),
-            pathlib.Path(config.data.dump),
-            debug_mode,
-        )
+    progress = mercari_bot.progress.create_progress_display()
+    progress.start()
+
+    try:
+        for profile in config.profile:
+            ret_code += mercari_bot.mercari_price_down.execute(
+                config,
+                profile,
+                pathlib.Path(config.data.selenium),
+                pathlib.Path(config.data.dump),
+                debug_mode,
+                progress=progress,
+            )
+
+        progress.set_status("全プロファイル完了")
+    finally:
+        progress.stop()
 
     logging.info("Finish!")
 
