@@ -119,7 +119,6 @@ test-walk-through:
     artifacts:
         when: always
         paths:
-            - data/debug/**
             - reports/**
         reports:
             junit: reports/junit-report.xml
