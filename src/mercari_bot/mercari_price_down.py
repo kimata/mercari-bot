@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import io
 import logging
 import logging.handlers
 import pathlib
-import random
 import re
 import time
-import traceback
 from typing import TYPE_CHECKING, Any
 
 import mercari_bot.logic
-import my_lib.notify.slack
+import mercari_bot.notify_slack
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
 import my_lib.store.mercari.login
 import my_lib.store.mercari.scrape
-import PIL.Image
 import selenium.webdriver.support.expected_conditions as EC
 from mercari_bot.config import AppConfig, ProfileConfig
 from selenium.webdriver.common.by import By
@@ -181,34 +177,14 @@ def execute(
         return 0
     except my_lib.store.mercari.exceptions.LoginError:
         logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
-
-        my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
-        my_lib.selenium_util.clean_dump(dump_path)
-
-        my_lib.notify.slack.error_with_image(
-            config.slack,
-            "メルカリログインエラー",
-            traceback.format_exc(),
-            {
-                "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
-                "text": "エラー時のスクリーンショット",
-            },
+        mercari_bot.notify_slack.dump_and_notify_error(
+            config.slack, "メルカリログインエラー", driver, dump_path
         )
         return -1
     except Exception:
         logging.exception("URL: %s", driver.current_url)
-
-        my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
-        my_lib.selenium_util.clean_dump(dump_path)
-
-        my_lib.notify.slack.error_with_image(
-            config.slack,
-            "メルカリ値下げエラー",
-            traceback.format_exc(),
-            {
-                "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
-                "text": "エラー時のスクリーンショット",
-            },
+        mercari_bot.notify_slack.dump_and_notify_error(
+            config.slack, "メルカリ値下げエラー", driver, dump_path
         )
         return -1
     finally:
