@@ -132,22 +132,32 @@ class ProgressDisplay:
         elapsed = time.time() - self._start_time
         elapsed_str = f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
 
+        # ターミナル幅を取得し、明示的に幅を制限
+        # NOTE: tmux 環境では幅計算が実際と異なることがあるため、余裕を持たせる
+        terminal_width = self._console.width - 1
+
         table = rich.table.Table(
             show_header=False,
             show_edge=False,
             box=None,
             padding=0,
             expand=True,
+            width=terminal_width,
             style=style,
         )
-        table.add_column("title", justify="left", ratio=1, no_wrap=True, style=style)
-        table.add_column("status", justify="center", ratio=3, no_wrap=True, style=style)
-        table.add_column("time", justify="right", ratio=1, no_wrap=True, style=style)
+        # 左右のカラムに min_width を設定して幅を安定させる
+        table.add_column(
+            "title", justify="left", ratio=1, min_width=12, no_wrap=True, overflow="ellipsis", style=style
+        )
+        table.add_column("status", justify="center", ratio=3, no_wrap=True, overflow="ellipsis", style=style)
+        table.add_column(
+            "time", justify="right", ratio=1, min_width=8, no_wrap=True, overflow="ellipsis", style=style
+        )
 
         table.add_row(
             rich.text.Text(" メルカリ ", style=style),
             rich.text.Text(self._status_text, style=style),
-            rich.text.Text(f" {elapsed_str} ", style=style),
+            rich.text.Text(f" {elapsed_str}  ", style=style),  # 末尾にスペース追加で -1 を補正
         )
 
         return table
