@@ -144,6 +144,7 @@ test-dry-run:
         - export LC_ALL=ja_JP.UTF-8
 
         - uv run python src/app.py -D -R
+        - sync
 
     cache:
         - key: ${CI_PROJECT_NAME}-selenium
@@ -178,6 +179,7 @@ test-docker:
         # root ユーザーでディレクトリのパーミッションを修正
         - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
         - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D -R
+        - sync
 
     cache:
         - key: ${CI_PROJECT_NAME}-selenium-docker
