@@ -140,71 +140,41 @@ jobs:
                     build/README.md
 
     release:
-        needs: build
-
-        outputs:
-            upload_url: ${{ steps.save_upload_url.outputs.value }}
+        needs: [prepare, build]
 
         runs-on: ubuntu-latest
 
         steps:
-            - name: Create release
-              id: create_release
-              uses: actions/create-release@v1.0.0
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                tag_name: ${{ github.ref }}
-                release_name: Release ${{ github.ref }}
-                draft: false
-                prerelease: false
-
-            - name: Save upload_url
-              id: save_upload_url
-              run: echo "value=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
-
-    release-binary:
-        needs: [prepare, release]
-
-        strategy:
-            matrix:
-                os: [ubuntu-latest, windows-latest, macos-14]
-                include:
-                    - os: ubuntu-latest
-                      label: ubuntu_x64
-                    - os: windows-latest
-                      label: windows_x64
-                    - os: macos-14
-                      label: macos_apple
-
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Define names
-              run: |
-                echo "ARCHIVE_NAME=${{ env.PROJECT_NAME }}-${{ matrix.os }}-binary-${{ needs.prepare.outputs.version }}" >> $GITHUB_ENV
-                echo "ARCHIVE_LABEL=${{ env.PROJECT_NAME }}-${{ matrix.label }}-binary-${{ needs.prepare.outputs.version }}" >> $GITHUB_ENV
-
-            - name: Download artifact
+            - name: Download all artifacts
               uses: actions/download-artifact@v4
               with:
-                name: "${{ matrix.os }} build"
-                path: ${{ env.ARCHIVE_NAME }}
+                path: artifacts
 
-            - name: Set execution permission
+            - name: Prepare release assets
               run: |
-                chmod -f +x ${{ env.ARCHIVE_NAME }}/*.bin || true
+                VERSION=${{ needs.prepare.outputs.version }}
 
-            - name: Archive binary
-              run: zip --recurse-paths ${{ env.ARCHIVE_NAME }}.zip ${{ env.ARCHIVE_NAME }}
+                # Ubuntu
+                mkdir -p ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
+                cp -r artifacts/ubuntu-latest\ build/* ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/
+                chmod -f +x ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/*.bin || true
+                zip -r ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
 
-            - name: Upload Release Asset
-              id: upload-release-asset
-              uses: actions/upload-release-asset@v1.0.1
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                # Windows
+                mkdir -p ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
+                cp -r artifacts/windows-latest\ build/* ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}/
+                zip -r ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
+
+                # macOS
+                mkdir -p ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
+                cp -r artifacts/macos-14\ build/* ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}/
+                zip -r ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
+
+            - name: Create release
+              uses: softprops/action-gh-release@v2
               with:
-                upload_url: ${{needs.release.outputs.upload_url}}
-                asset_name: ${{ env.ARCHIVE_LABEL }}.zip
-                asset_path: ${{ env.ARCHIVE_NAME }}.zip
-                asset_content_type: application/octet-stream
+                name: Release ${{ github.ref_name }}
+                files: |
+                  ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${{ needs.prepare.outputs.version }}.zip
+                  ${{ env.PROJECT_NAME }}-windows_x64-binary-${{ needs.prepare.outputs.version }}.zip
+                  ${{ env.PROJECT_NAME }}-macos_apple-binary-${{ needs.prepare.outputs.version }}.zip
