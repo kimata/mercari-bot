@@ -2,7 +2,9 @@
 
 メルカリ出品アイテムの自動価格調整システム
 
-[![Docker](https://github.com/kimata/mercari-bot/actions/workflows/docker.yaml/badge.svg)](https://github.com/kimata/mercari-bot/actions/workflows/docker.yaml)
+[![Test Status](https://github.com/kimata/mercari-bot/actions/workflows/test.yaml/badge.svg)](https://github.com/kimata/mercari-bot/actions/workflows/test.yaml)
+[![Test Report](https://img.shields.io/badge/Test_Report-pytest.html-blue)](https://kimata.github.io/mercari-bot/pytest.html)
+[![Coverage Status](https://coveralls.io/repos/github/kimata/mercari-bot/badge.svg?branch=master)](https://coveralls.io/github/kimata/mercari-bot?branch=master)
 
 ## 📋 概要
 
