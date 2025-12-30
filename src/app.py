@@ -25,7 +25,7 @@ import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig
 
-SCHEMA_CONFIG = "config.schema"
+SCHEMA_CONFIG = "schema/config.schema"
 
 
 def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: io.StringIO | None) -> int:

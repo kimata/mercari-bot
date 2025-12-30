@@ -360,6 +360,6 @@ class TestLoad:
                 return_value=SlackEmptyConfig(),
             ),
         ):
-            load("config.yaml", "config.schema")
+            load("config.yaml", "schema/config.schema")
 
-            mock_load.assert_called_once_with("config.yaml", "config.schema")
+            mock_load.assert_called_once_with("config.yaml", "schema/config.schema")

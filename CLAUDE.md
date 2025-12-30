@@ -146,7 +146,7 @@ items.append("value")  # type: ignore[union-attr]
 ### 設定
 
 - YAML 形式（`config.yaml`）
-- JSON Schema で検証（`config.schema`）
+- JSON Schema で検証（`schema/config.schema`）
 - `mercari_bot/config.py` で `dataclass` として型定義
 
 ## 設定ファイル
