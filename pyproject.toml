@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@d445b87de7e3b68f579d2b141d2684043d6b6106",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@49fda6c4c056251deeac6ed70d47c519fc1e2038",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -21,21 +21,21 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.2.0",
+    "pre-commit>=4.5.1",
     "flaky>=3.8.1",
-    "playwright>=1.49.0",
-    "pytest>=8.3.0",
-    "pytest-cov>=6.0.0",
+    "playwright>=1.57.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
     "pytest-html>=4.1.1",
-    "pytest-mock>=3.14.0",
-    "pytest-playwright>=0.6.0",
-    "pytest-xdist>=3.6.1",
+    "pytest-mock>=3.15.1",
+    "pytest-playwright>=0.7.2",
+    "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
-    "time-machine>=2.16.0",
-    "mypy>=1.14.0",
-    "pyright>=1.1.0",
-    "types-pytz>=2024.1.0",
-    "types-paramiko>=3.4.0",
+    "time-machine>=3.2.0",
+    "mypy>=1.19.1",
+    "pyright>=1.1.407",
+    "types-pytz>=2025.2.0",
+    "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
 ]
 
