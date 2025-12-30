@@ -134,6 +134,9 @@ test-dry-run:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
     script:
+        # NOTE: 一時的にキャッシュをクリア（破損したプロファイルを削除）
+        - rm -rf data/chrome
+
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
         - mv bot-config/mercari-bot.yaml config.yaml
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
