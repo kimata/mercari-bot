@@ -18,6 +18,7 @@ from mercari_bot.config import (
     _parse_interval,
     _parse_profile,
     load,
+    log_config_summary,
 )
 from my_lib.notify.slack import SlackEmptyConfig
 
@@ -363,3 +364,122 @@ class TestLoad:
             load("config.yaml", "schema/config.schema")
 
             mock_load.assert_called_once_with("config.yaml", "schema/config.schema")
+
+
+class TestLogConfigSummary:
+    """log_config_summary のテスト"""
+
+    @pytest.fixture
+    def sample_config(self):
+        """サンプル AppConfig"""
+        return AppConfig(
+            profile=[
+                ProfileConfig(
+                    name="Test Profile",
+                    mercari=unittest.mock.MagicMock(),
+                    line=unittest.mock.MagicMock(),
+                    discount=[
+                        DiscountConfig(favorite_count=10, step=200, threshold=3000),
+                        DiscountConfig(favorite_count=0, step=100, threshold=3000),
+                    ],
+                    interval=IntervalConfig(hour=20),
+                )
+            ],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def test_logs_profile_name(self, sample_config, caplog):
+        """プロファイル名がログに出力される"""
+        import logging
+
+        with caplog.at_level(logging.INFO):
+            log_config_summary(sample_config)
+
+        assert "プロファイル「Test Profile」の値下げ設定:" in caplog.text
+
+    def test_logs_interval(self, sample_config, caplog):
+        """更新間隔がログに出力される"""
+        import logging
+
+        with caplog.at_level(logging.INFO):
+            log_config_summary(sample_config)
+
+        assert "更新間隔: 20時間以上経過したアイテムのみ処理" in caplog.text
+
+    def test_logs_discount_rules(self, sample_config, caplog):
+        """値下げルールがログに出力される"""
+        import logging
+
+        with caplog.at_level(logging.INFO):
+            log_config_summary(sample_config)
+
+        assert "お気に入り 10 以上: 200円値下げ (下限: 3,000円)" in caplog.text
+        assert "それ以外: 100円値下げ (下限: 3,000円)" in caplog.text
+
+    def test_multiple_profiles(self, caplog):
+        """複数プロファイルの出力"""
+        import logging
+
+        config = AppConfig(
+            profile=[
+                ProfileConfig(
+                    name="Profile A",
+                    mercari=unittest.mock.MagicMock(),
+                    line=unittest.mock.MagicMock(),
+                    discount=[
+                        DiscountConfig(favorite_count=5, step=150, threshold=2000),
+                    ],
+                    interval=IntervalConfig(hour=12),
+                ),
+                ProfileConfig(
+                    name="Profile B",
+                    mercari=unittest.mock.MagicMock(),
+                    line=unittest.mock.MagicMock(),
+                    discount=[
+                        DiscountConfig(favorite_count=0, step=50, threshold=1000),
+                    ],
+                    interval=IntervalConfig(hour=24),
+                ),
+            ],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            mail=unittest.mock.MagicMock(),
+        )
+
+        with caplog.at_level(logging.INFO):
+            log_config_summary(config)
+
+        assert "プロファイル「Profile A」の値下げ設定:" in caplog.text
+        assert "プロファイル「Profile B」の値下げ設定:" in caplog.text
+        assert "更新間隔: 12時間以上経過したアイテムのみ処理" in caplog.text
+        assert "更新間隔: 24時間以上経過したアイテムのみ処理" in caplog.text
+
+    def test_favorite_count_zero_not_last(self, caplog):
+        """favorite_count=0 が最後でない場合"""
+        import logging
+
+        config = AppConfig(
+            profile=[
+                ProfileConfig(
+                    name="Test",
+                    mercari=unittest.mock.MagicMock(),
+                    line=unittest.mock.MagicMock(),
+                    discount=[
+                        DiscountConfig(favorite_count=0, step=100, threshold=1000),
+                        DiscountConfig(favorite_count=5, step=200, threshold=2000),
+                    ],
+                    interval=IntervalConfig(hour=10),
+                ),
+            ],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            mail=unittest.mock.MagicMock(),
+        )
+
+        with caplog.at_level(logging.INFO):
+            log_config_summary(config)
+
+        # favorite_count=0 が最後でない場合は「お気に入り 0 以上」と表示
+        assert "お気に入り 0 以上: 100円値下げ (下限: 1,000円)" in caplog.text

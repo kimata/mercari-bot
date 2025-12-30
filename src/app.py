@@ -21,6 +21,7 @@ import sys
 import my_lib.notify.mail
 import my_lib.notify.slack
 
+import mercari_bot.config
 import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig
@@ -28,10 +29,18 @@ from mercari_bot.config import AppConfig
 SCHEMA_CONFIG = "schema/config.schema"
 
 
-def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: io.StringIO | None) -> int:
+def execute(
+    config: AppConfig,
+    notify_log: bool,
+    debug_mode: bool,
+    log_str_io: io.StringIO | None,
+) -> int:
     ret_code = 0
 
     logging.info("Start")
+
+    # 設定内容をログ出力
+    mercari_bot.config.log_config_summary(config)
 
     progress = mercari_bot.progress.create_progress_display()
     progress.start()
@@ -47,7 +56,7 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
                 progress=progress,
             )
 
-        progress.set_status("🎉 全プロファイル完了")
+        progress.set_status("🎉  全プロファイル完了")
     finally:
         progress.stop()
 
@@ -70,7 +79,6 @@ def execute(config: AppConfig, notify_log: bool, debug_mode: bool, log_str_io: i
 ######################################################################
 if __name__ == "__main__":
     import docopt
-
     import my_lib.logger
 
     import mercari_bot.config

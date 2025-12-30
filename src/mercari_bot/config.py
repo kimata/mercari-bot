@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -110,3 +111,36 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
         data=_parse_data(raw_config["data"]),
         mail=parse_mail_config(raw_config.get("mail", {})),
     )
+
+
+def log_config_summary(config: AppConfig) -> None:
+    """設定内容を人が読みやすい形でログ出力する"""
+    for profile in config.profile:
+        logging.info("=" * 50)
+        logging.info("プロファイル「%s」の値下げ設定:", profile.name)
+        logging.info("-" * 50)
+
+        # 更新間隔
+        logging.info(
+            "  更新間隔: %d時間以上経過したアイテムのみ処理",
+            profile.interval.hour,
+        )
+
+        # 値下げルール
+        logging.info("  値下げルール:")
+        for i, discount in enumerate(profile.discount):
+            if discount.favorite_count > 0:
+                condition = f"お気に入り {discount.favorite_count} 以上"
+            elif i == len(profile.discount) - 1:
+                condition = "それ以外"
+            else:
+                condition = f"お気に入り {discount.favorite_count} 以上"
+
+            logging.info(
+                "    - %s: %d円値下げ (下限: %s円)",
+                condition,
+                discount.step,
+                f"{discount.threshold:,}",
+            )
+
+        logging.info("=" * 50)
