@@ -123,38 +123,12 @@ test-walk-through:
         reports:
             junit: reports/junit-report.xml
 
-test-docker:
+test-dry-run:
     stage: test
 
     needs:
-        - generate-tag
-        - build-image
-        - test-walk-through
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - mkdir -p data/chrome data/debug
-        - chmod -R 777 data || true
-
-    script:
-        - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
-        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
-        # root ユーザーでディレクトリのパーミッションを修正
-        - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
-        - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
-
-    cache:
-        - key: ${CI_PROJECT_NAME}-selenium-docker
-          paths:
-              - data/chrome
-
-    artifacts:
-        when: always
-        paths:
-            - data/debug/**
-
-test-dry-run:
-    stage: test
+        - job: test-walk-through
+          artifacts: false
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
@@ -173,6 +147,39 @@ test-dry-run:
 
     cache:
         - key: ${CI_PROJECT_NAME}-selenium
+          paths:
+              - data/chrome
+
+    artifacts:
+        when: always
+        paths:
+            - data/debug/**
+
+test-docker:
+    stage: test
+
+    needs:
+        - generate-tag
+        - build-image
+        - job: test-walk-through
+          artifacts: false
+        - job: test-dry-run
+          artifacts: false
+
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - mkdir -p data/chrome data/debug
+        - chmod -R 777 data || true
+
+    script:
+        - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
+        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        # root ユーザーでディレクトリのパーミッションを修正
+        - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
+        - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
+
+    cache:
+        - key: ${CI_PROJECT_NAME}-selenium-docker
           paths:
               - data/chrome
 
