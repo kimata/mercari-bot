@@ -85,7 +85,7 @@ jobs:
               with:
                   path: reports
 
-    deploy:
+    publish-report:
         environment:
             name: github-pages
             url: ${{ steps.deployment.outputs.page_url }}
@@ -93,6 +93,6 @@ jobs:
         needs: test
         if: github.ref == 'refs/heads/master'
         steps:
-            - name: Download test results
+            - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v4
