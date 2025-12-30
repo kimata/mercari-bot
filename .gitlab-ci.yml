@@ -133,7 +133,8 @@ test-docker:
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - mkdir -p data/chrome
+        - mkdir -p data/chrome data/debug
+        - chmod -R 777 data
 
     script:
         - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
