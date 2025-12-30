@@ -146,11 +146,22 @@ def execute(
     dump_path: pathlib.Path,
     debug_mode: bool,
     progress: mercari_bot.progress.ProgressDisplay | None = None,
+    clear_profile_on_browser_error: bool = False,
 ) -> int:
     if progress is not None:
         progress.set_status(f"🤖 ブラウザを起動中... ({profile.name})")
 
-    driver = my_lib.selenium_util.create_driver(profile.name, data_path)
+    try:
+        driver = my_lib.selenium_util.create_driver(profile.name, data_path)
+    except Exception:
+        logging.exception("ブラウザの起動に失敗しました")
+        if progress is not None:
+            progress.set_status("❌ ブラウザ起動エラー", is_error=True)
+
+        if clear_profile_on_browser_error:
+            my_lib.selenium_util.delete_profile(profile.name, data_path)
+
+        raise
 
     my_lib.selenium_util.clear_cache(driver)
 

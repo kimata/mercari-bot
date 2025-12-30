@@ -3,12 +3,13 @@
 メルカリに出品中のアイテムの価格を自動的に値下げします。
 
 Usage:
-  app.py [-c CONFIG] [-l] [-D]
+  app.py [-c CONFIG] [-l] [-D] [-R]
 
 Options:
   -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。 [default: config.yaml]
   -l                : 動作ログを Slack やメールで通知します。
   -D                : デバッグモードで動作します。(価格変更は行いません)
+  -R                : ブラウザ起動失敗時にプロファイルを削除します。
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ def execute(
     notify_log: bool,
     debug_mode: bool,
     log_str_io: io.StringIO | None,
+    clear_profile_on_browser_error: bool = False,
 ) -> int:
     ret_code = 0
 
@@ -54,6 +56,7 @@ def execute(
                 pathlib.Path(config.data.dump),
                 debug_mode,
                 progress=progress,
+                clear_profile_on_browser_error=clear_profile_on_browser_error,
             )
 
         progress.set_status("🎉  全プロファイル完了")
@@ -89,6 +92,7 @@ if __name__ == "__main__":
     config_file = args["-c"]
     notify_log = args["-l"]
     debug_mode = args["-D"]
+    clear_profile_on_browser_error = args["-R"]
 
     log_level = logging.DEBUG if debug_mode else logging.INFO
 
@@ -101,7 +105,7 @@ if __name__ == "__main__":
 
     config = mercari_bot.config.load(config_file, SCHEMA_CONFIG)
 
-    ret_code = execute(config, notify_log, debug_mode, log_str_io)
+    ret_code = execute(config, notify_log, debug_mode, log_str_io, clear_profile_on_browser_error)
 
     logging.info("Finish.")
 
