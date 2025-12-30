@@ -149,6 +149,7 @@ test-dry-run:
         - key: ${CI_PROJECT_NAME}-selenium
           paths:
               - data/chrome
+          when: on_success
 
     artifacts:
         when: always
@@ -182,6 +183,7 @@ test-docker:
         - key: ${CI_PROJECT_NAME}-selenium-docker
           paths:
               - data/chrome
+          when: on_success
 
     artifacts:
         when: always
