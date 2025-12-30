@@ -231,6 +231,37 @@ class TestRoundPrice:
         assert mercari_bot.logic.round_price(2945 - 100) == 2840
 
 
+class TestGetDiscountStepEdgeCases:
+    """get_discount_step の境界ケーステスト"""
+
+    def test_no_matching_favorite_count(self):
+        """どの条件にもマッチしない favorite_count"""
+        # favorite_count > 0 を要求する設定
+        from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
+        from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
+
+        profile = ProfileConfig(
+            name="High Favorite Only",
+            mercari=MercariLoginConfig(user="test@example.com", password="test"),
+            discount=[
+                DiscountConfig(favorite_count=100, step=500, threshold=5000),
+                DiscountConfig(favorite_count=50, step=300, threshold=3000),
+            ],
+            interval=IntervalConfig(hour=24),
+            line=LineLoginConfig(user="user", password="pass"),
+        )
+
+        # favorite_count=10 はどの条件にもマッチしない
+        result = mercari_bot.logic.get_discount_step(
+            profile,
+            price=10000,
+            shipping_fee=0,
+            favorite_count=10,  # 50未満
+        )
+
+        assert result is None
+
+
 class TestModifiedTimeParseError:
     """ModifiedTimeParseError のテスト"""
 
