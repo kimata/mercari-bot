@@ -134,11 +134,13 @@ test-docker:
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
         - mkdir -p data/chrome data/debug
-        - chmod -R 777 data
+        - chmod -R 777 data || true
 
     script:
         - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        # root ユーザーでディレクトリのパーミッションを修正
+        - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
         - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
 
     cache:
