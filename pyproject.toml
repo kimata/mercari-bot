@@ -66,6 +66,9 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore:datetime\\.datetime\\.utcfromtimestamp\\(\\) is deprecated:DeprecationWarning",
     "ignore::DeprecationWarning:multiprocessing\\.popen_fork",
+    # pydub の警告（Python 3.12+ でのエスケープシーケンスと audioop 非推奨）
+    "ignore:invalid escape sequence:SyntaxWarning:pydub.*",
+    "ignore:'audioop' is deprecated:DeprecationWarning:pydub.*",
     "ignore:unclosed database.*:ResourceWarning:rich.*",
     "ignore:unclosed database.*:ResourceWarning:influxdb_client.*",
     "ignore:unclosed database.*:ResourceWarning:coverage.*",
