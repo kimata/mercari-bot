@@ -133,11 +133,22 @@ test-docker:
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - mkdir -p data/chrome
 
     script:
         - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
-        - docker run --rm ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
+        - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D
+
+    cache:
+        - key: ${CI_PROJECT_NAME}-selenium-docker
+          paths:
+              - data/chrome
+
+    artifacts:
+        when: always
+        paths:
+            - data/debug/**
 
 test-dry-run:
     stage: test
