@@ -1,29 +1,43 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": ["config:best-practices", ":timezone(Asia/Tokyo)"],
+    "extends": [
+        "config:best-practices",
+        ":timezone(Asia/Tokyo)"
+    ],
     "hostRules": [
         {
-            "matchHost": "registry.green-rabbit.net:5000",
+            "matchHost": "https://registry.green-rabbit.net:5000",
             "insecureRegistry": true
         }
     ],
     "automerge": true,
     "automergeType": "pr",
-    "labels": ["renovate"],
-    "schedule": ["every weekend"],
+    "labels": [
+        "renovate"
+    ],
+    "schedule": [
+        "every weekend"
+    ],
     "prConcurrentLimit": 5,
     "lockFileMaintenance": {
         "enabled": true,
-        "schedule": ["before 5am on the first day of the month"]
+        "schedule": [
+            "before 5am on the first day of the month"
+        ]
     },
     "packageRules": [
         {
-            "matchUpdateTypes": ["minor", "patch"],
+            "matchUpdateTypes": [
+                "minor",
+                "patch"
+            ],
             "groupName": "minor and patch updates",
             "automerge": true
         },
         {
-            "matchUpdateTypes": ["major"],
+            "matchUpdateTypes": [
+                "major"
+            ],
             "automerge": false
         }
     ]
