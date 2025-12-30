@@ -1,0 +1,210 @@
+name: Make release
+on:
+    push:
+        tags:
+            - "v[0-9]+.[0-9]+"
+            - "v[0-9]+.[0-9]+.[0-9]+"
+            - "v[0-9]+.[0-9]+.[0-9]+.[0-9]+"
+
+env:
+    PROJECT_NAME: mercari-bot
+    SCRIPT_NAME: src/app.py
+
+jobs:
+    prepare:
+        outputs:
+            version: ${{ steps.set_version.outputs.value }}
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Set version
+              id: set_version
+              run: echo "value=$(echo ${{ github.ref_name }} | sed 's/v//')" >> "$GITHUB_OUTPUT"
+
+    build:
+        needs: prepare
+
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-14]
+            fail-fast: false
+
+        runs-on: ${{ matrix.os }}
+
+        steps:
+            - name: Check-out repository
+              uses: actions/checkout@v3
+
+            - name: Setup Python
+              uses: actions/setup-python@v4
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v4
+
+            - name: Install Dependencies
+              run: |
+                uv sync
+
+            - name: Build Executable
+              shell: bash
+              run: |
+                # 基本オプション
+                COMMON_OPTS="--mode=app --product-name=${{ env.PROJECT_NAME }} --file-version=${{ needs.prepare.outputs.version }} --product-version=${{ needs.prepare.outputs.version }} --include-package-data=selenium --include-package=jinxed --no-deployment-flag=self-execution --assume-yes-for-downloads --output-dir=build"
+
+                # 未使用の my_lib モジュールを除外
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sensor --nofollow-import-to=my_lib.sensor_data"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.notify.line --nofollow-import-to=my_lib.notify.mail"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.store.amazon"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.webapp --nofollow-import-to=my_lib.flask_util"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.weather --nofollow-import-to=my_lib.rpi"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sqlite_util --nofollow-import-to=my_lib.voice"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.healthz --nofollow-import-to=my_lib.fluentd_util"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.git_util --nofollow-import-to=my_lib.plot_util"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.panel_util --nofollow-import-to=my_lib.panel_config"
+
+                # 未使用のサードパーティパッケージを除外
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=smbus2 --nofollow-import-to=serial"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=influxdb_client --nofollow-import-to=linebot"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=sseclient --nofollow-import-to=uptime"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=git --nofollow-import-to=gitdb"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=flask --nofollow-import-to=werkzeug"
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=genson --nofollow-import-to=lxml"
+
+                # テストモジュールを除外
+                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=*.tests --nofollow-import-to=pytest"
+
+                if [ "$RUNNER_OS" == "Windows" ]; then
+                  uv run python -m nuitka $COMMON_OPTS --windows-icon-from-ico=img/icon.png --output-filename=${{ env.PROJECT_NAME }}.exe ${{ env.SCRIPT_NAME }}
+                elif [ "$RUNNER_OS" == "macOS" ]; then
+                  uv run python -m nuitka $COMMON_OPTS --macos-app-icon=img/icon.png --macos-app-name=${{ env.PROJECT_NAME }} ${{ env.SCRIPT_NAME }}
+                else
+                  uv run python -m nuitka $COMMON_OPTS --output-filename=${{ env.PROJECT_NAME }}.bin ${{ env.SCRIPT_NAME }}
+                fi
+
+            - name: Check if secret exists
+              id: check_secret
+              shell: pwsh
+              run: |
+                if ("${{ secrets.PASSWORD }}" -ne "") {
+                  Write-Output "secret_exists=true" >> $env:GITHUB_OUTPUT
+                } else {
+                  Write-Output "secret_exists=false" >> $env:GITHUB_OUTPUT
+                }
+
+            - name: Sign code
+              if: (runner.os == 'Windows') && (steps.check_secret.outputs.secret_exists == 'true')
+              shell: pwsh
+              run: |
+                # Find signtool.exe in Windows SDK
+                $sdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                  Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+                  Sort-Object Name -Descending |
+                  Select-Object -First 1
+                if (-not $sdkPath) {
+                  Write-Error "Windows SDK not found"
+                  exit 1
+                }
+                $signtool = Join-Path $sdkPath.FullName "x64\signtool.exe"
+                Write-Host "Using signtool: $signtool"
+
+                # Decode certificate
+                $certPath = "$env:RUNNER_TEMP\signcert.p12"
+                $certData = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE }}")
+                [System.IO.File]::WriteAllBytes($certPath, $certData)
+
+                # Sign the executable
+                & $signtool sign /f $certPath /p "${{ secrets.PASSWORD }}" /fd sha256 /tr http://timestamp.digicert.com /td sha256 "build/${{ env.PROJECT_NAME }}.exe"
+                if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Code signing failed"
+                  exit 1
+                }
+
+                # Clean up certificate
+                Remove-Item $certPath -Force
+
+            - name: Copy bundle file
+              run: |
+                cp README.md build/README.md
+                cp config.example.yaml build/config.example.yaml
+
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                name: "${{ matrix.os }} build"
+                path: |
+                    build/*.exe
+                    build/*.bin
+                    build/*.app/**/*
+                    build/config.example.yaml
+                    build/README.md
+
+    release:
+        needs: build
+
+        outputs:
+            upload_url: ${{ steps.save_upload_url.outputs.value }}
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Create release
+              id: create_release
+              uses: actions/create-release@v1.0.0
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                tag_name: ${{ github.ref }}
+                release_name: Release ${{ github.ref }}
+                draft: false
+                prerelease: false
+
+            - name: Save upload_url
+              id: save_upload_url
+              run: echo "value=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
+
+    release-binary:
+        needs: [prepare, release]
+
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-14]
+                include:
+                    - os: ubuntu-latest
+                      label: ubuntu_x64
+                    - os: windows-latest
+                      label: windows_x64
+                    - os: macos-14
+                      label: macos_apple
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Define names
+              run: |
+                echo "ARCHIVE_NAME=${{ env.PROJECT_NAME }}-${{ matrix.os }}-binary-${{ needs.prepare.outputs.version }}" >> $GITHUB_ENV
+                echo "ARCHIVE_LABEL=${{ env.PROJECT_NAME }}-${{ matrix.label }}-binary-${{ needs.prepare.outputs.version }}" >> $GITHUB_ENV
+
+            - name: Download artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: "${{ matrix.os }} build"
+                path: ${{ env.ARCHIVE_NAME }}
+
+            - name: Set execution permission
+              run: |
+                chmod -f +x ${{ env.ARCHIVE_NAME }}/*.bin || true
+
+            - name: Archive binary
+              run: zip --recurse-paths ${{ env.ARCHIVE_NAME }}.zip ${{ env.ARCHIVE_NAME }}
+
+            - name: Upload Release Asset
+              id: upload-release-asset
+              uses: actions/upload-release-asset@v1.0.1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                upload_url: ${{needs.release.outputs.upload_url}}
+                asset_name: ${{ env.ARCHIVE_LABEL }}.zip
+                asset_path: ${{ env.ARCHIVE_NAME }}.zip
+                asset_content_type: application/octet-stream
