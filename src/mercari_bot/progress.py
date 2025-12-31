@@ -8,6 +8,7 @@ TTY 環境では Rich による視覚的な進捗表示を行い、
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -134,7 +135,9 @@ class ProgressDisplay:
 
         # ターミナル幅を取得し、明示的に幅を制限
         # NOTE: tmux 環境では幅計算が実際と異なることがあるため、余裕を持たせる
-        terminal_width = self._console.width - 1
+        terminal_width = self._console.width
+        if os.environ.get("TMUX"):
+            terminal_width -= 2
 
         table = rich.table.Table(
             show_header=False,
