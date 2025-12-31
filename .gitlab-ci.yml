@@ -123,7 +123,7 @@ test-walk-through:
         reports:
             junit: reports/junit-report.xml
 
-test-dry-run:
+test-smoke:
     stage: test
 
     needs:
@@ -165,7 +165,7 @@ test-docker:
         - build-image
         - job: test-walk-through
           artifacts: false
-        - job: test-dry-run
+        - job: test-smoke
           artifacts: false
 
     before_script:
@@ -224,7 +224,7 @@ deploy:
         - generate-tag
         - job: test-typecheck
           artifacts: false
-        - job: test-dry-run
+        - job: test-smoke
           artifacts: false
         - job: test-docker
 
