@@ -174,7 +174,11 @@ test-docker:
 
     script:
         - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
+        # リソース情報を確認
+        - echo "=== Host Resources ===" && free -h && nproc && df -h /dev/shm
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        # コンテナ内のリソース情報を確認
+        - docker run --rm --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "echo '=== Container Resources ===' && free -h && nproc && df -h /dev/shm"
         # root ユーザーでディレクトリのパーミッションを修正
         - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
         - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -D -R
