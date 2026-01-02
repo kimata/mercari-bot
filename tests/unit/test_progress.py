@@ -17,6 +17,8 @@ from mercari_bot.progress import (
     STATUS_STYLE_NORMAL,
     ProgressDisplay,
     _DisplayRenderable,
+    _NullLive,
+    _NullProgress,
     create_progress_display,
 )
 
@@ -50,10 +52,12 @@ class TestProgressDisplayBasic:
         ):
             progress = ProgressDisplay()
             progress.start()
-            assert progress._live is not None
-            assert progress._progress is not None
+            # TTY 環境では実際の Live/Progress が使われる
+            assert not isinstance(progress._live, _NullLive)
+            assert not isinstance(progress._progress, _NullProgress)
             progress.stop()
-            assert progress._live is None
+            # stop 後は NullLive に戻る
+            assert isinstance(progress._live, _NullLive)
 
 
 class TestProgressDisplaySetStatus:
@@ -119,9 +123,10 @@ class TestProgressDisplayObserver:
     """ProgressObserver Protocol 実装のテスト"""
 
     def test_on_total_count_without_progress(self):
-        """_progress がない場合は何もしない"""
+        """NullProgress の場合は何もしない（Null Object パターン）"""
         progress = ProgressDisplay()
-        progress._progress = None
+        # 非TTY環境ではデフォルトで NullProgress が使われる
+        assert isinstance(progress._progress, _NullProgress)
 
         # エラーなく完了
         progress.on_total_count(10)
@@ -161,9 +166,10 @@ class TestProgressDisplayObserver:
             assert "不明" in mock_set.call_args[0][0]
 
     def test_on_item_complete_without_progress(self):
-        """_progress がない場合は何もしない"""
+        """NullProgress の場合は何もしない（Null Object パターン）"""
         progress = ProgressDisplay()
-        progress._progress = None
+        # 非TTY環境ではデフォルトで NullProgress が使われる
+        assert isinstance(progress._progress, _NullProgress)
 
         # エラーなく完了
         progress.on_item_complete(0, 10, {"name": "test"})
@@ -315,9 +321,10 @@ class TestProgressDisplayRefresh:
         mock_live.refresh.assert_called_once()
 
     def test_refresh_display_without_live(self):
-        """_live がない場合は何もしない"""
+        """NullLive の場合は何もしない（Null Object パターン）"""
         progress = ProgressDisplay()
-        progress._live = None
+        # 非TTY環境ではデフォルトで NullLive が使われる
+        assert isinstance(progress._live, _NullLive)
 
         # エラーなく完了
         progress._refresh_display()

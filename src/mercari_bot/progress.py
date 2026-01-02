@@ -3,6 +3,7 @@
 
 TTY 環境では Rich による視覚的な進捗表示を行い、
 非 TTY 環境（CI/CD パイプラインなど）では logging にフォールバックします。
+Null Object パターンを使用して TTY 分岐をシンプルにしています。
 """
 
 from __future__ import annotations
@@ -27,6 +28,35 @@ STATUS_STYLE_ERROR = "bold white on red"
 PROGRESS_ITEM = "アイテム処理"
 
 
+class _NullProgress:
+    """非TTY環境用の何もしない Progress（Null Object パターン）"""
+
+    tasks: list[rich.progress.Task] = []
+
+    def add_task(self, description: str, total: float | None = None) -> rich.progress.TaskID:
+        return rich.progress.TaskID(0)
+
+    def update(self, task_id: rich.progress.TaskID, advance: float = 1) -> None:
+        pass
+
+    def __rich__(self) -> rich.text.Text:
+        """Rich プロトコル対応（空のテキストを返す）"""
+        return rich.text.Text("")
+
+
+class _NullLive:
+    """非TTY環境用の何もしない Live（Null Object パターン）"""
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+    def refresh(self) -> None:
+        pass
+
+
 class _DisplayRenderable:
     """Live 表示用の動的 renderable クラス"""
 
@@ -43,6 +73,7 @@ class ProgressDisplay:
     """Rich による進捗表示を管理するクラス
 
     ProgressObserver Protocol を実装し、iter_items_on_display に渡して使用します。
+    Null Object パターンにより、TTY/非TTY の分岐を各メソッド内で行わずに済みます。
 
     Examples:
         progress = ProgressDisplay()
@@ -64,13 +95,13 @@ class ProgressDisplay:
 
     # Rich 関連
     _console: rich.console.Console = field(default_factory=rich.console.Console)
-    _progress: rich.progress.Progress | None = field(default=None, repr=False)
-    _live: rich.live.Live | None = field(default=None, repr=False)
+    _progress: rich.progress.Progress | _NullProgress = field(default_factory=_NullProgress, repr=False)
+    _live: rich.live.Live | _NullLive = field(default_factory=_NullLive, repr=False)
     _start_time: float = field(default_factory=time.time)
     _status_text: str = ""
     _status_is_error: bool = False
     _display_renderable: _DisplayRenderable | None = field(default=None, repr=False)
-    _item_task_id: rich.progress.TaskID | None = field(default=None, repr=False)
+    _item_task_id: rich.progress.TaskID = field(default=rich.progress.TaskID(0), repr=False)
 
     @property
     def is_terminal(self) -> bool:
@@ -79,6 +110,9 @@ class ProgressDisplay:
 
     def start(self) -> None:
         """進捗表示を開始する"""
+        self._start_time = time.time()
+
+        # 非TTY環境では Null Object を使用（デフォルト値のまま）
         if not self._console.is_terminal:
             return
 
@@ -91,7 +125,6 @@ class ProgressDisplay:
             console=self._console,
             expand=True,
         )
-        self._start_time = time.time()
         self._display_renderable = _DisplayRenderable(self)
         self._live = rich.live.Live(
             self._display_renderable,
@@ -101,10 +134,9 @@ class ProgressDisplay:
         self._live.start()
 
     def stop(self) -> None:
-        """進捗表示を停止する"""
-        if self._live is not None:
-            self._live.stop()
-            self._live = None
+        """進捗表示を停止する（Null Object の場合は何もしない）"""
+        self._live.stop()
+        self._live = _NullLive()
 
     def set_status(self, status: str, is_error: bool = False) -> None:
         """ステータスを更新する
@@ -168,14 +200,14 @@ class ProgressDisplay:
     def _create_display(self) -> Any:
         """表示内容を作成"""
         status_bar = self._create_status_bar()
-        if self._progress is not None and len(self._progress.tasks) > 0:
+        # NullProgress の場合 tasks は常に空なのでこの条件で十分
+        if len(self._progress.tasks) > 0:
             return rich.console.Group(status_bar, self._progress)
         return status_bar
 
     def _refresh_display(self) -> None:
-        """表示を強制的に再描画"""
-        if self._live is not None:
-            self._live.refresh()
+        """表示を強制的に再描画（Null Object の場合は何もしない）"""
+        self._live.refresh()
 
     def _get_max_item_name_length(self) -> int:
         """ステータスバーに表示可能な商品名の最大長を計算する"""
@@ -199,10 +231,7 @@ class ProgressDisplay:
 
     # --- ProgressObserver Protocol の実装 ---
     def on_total_count(self, count: int) -> None:
-        """アイテム総数が判明したときに呼ばれる"""
-        if self._progress is None:
-            return
-
+        """アイテム総数が判明したときに呼ばれる（Null Object の場合は何もしない）"""
         self._item_task_id = self._progress.add_task(PROGRESS_ITEM, total=count)
         self._refresh_display()
 
@@ -214,10 +243,9 @@ class ProgressDisplay:
         self.set_status(f"🏷️ 処理中: {name}")
 
     def on_item_complete(self, index: int, total: int, item: dict[str, Any]) -> None:
-        """各アイテムの処理完了時に呼ばれる"""
-        if self._progress is not None and self._item_task_id is not None:
-            self._progress.update(self._item_task_id, advance=1)
-            self._refresh_display()
+        """各アイテムの処理完了時に呼ばれる（Null Object の場合は何もしない）"""
+        self._progress.update(self._item_task_id, advance=1)
+        self._refresh_display()
 
 
 def create_progress_display() -> ProgressDisplay:
