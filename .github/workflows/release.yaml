@@ -34,13 +34,13 @@ jobs:
 
         steps:
             - name: Check-out repository
-              uses: actions/checkout@v3
+              uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
             - name: Setup Python
-              uses: actions/setup-python@v4
+              uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
 
             - name: Install uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
 
             - name: Install Dependencies
               run: |
@@ -129,7 +129,7 @@ jobs:
                 cp config.example.yaml build/config.example.yaml
 
             - name: Upload Artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
               with:
                 name: "${{ matrix.os }} build"
                 path: |
@@ -146,7 +146,7 @@ jobs:
 
         steps:
             - name: Download all artifacts
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
               with:
                 path: artifacts
 
@@ -171,7 +171,7 @@ jobs:
                 zip -r ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
 
             - name: Create release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
               with:
                 name: Release ${{ github.ref_name }}
                 files: |
