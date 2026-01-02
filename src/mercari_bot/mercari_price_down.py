@@ -8,18 +8,22 @@ import re
 import time
 from typing import TYPE_CHECKING, Any
 
-import mercari_bot.logic
-import mercari_bot.notify_slack
-import mercari_bot.progress
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
 import my_lib.store.mercari.login
 import my_lib.store.mercari.scrape
+import selenium.common.exceptions
 import selenium.webdriver.support.expected_conditions as EC
-from mercari_bot.config import AppConfig, ProfileConfig
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
+
+import mercari_bot.logic
+import mercari_bot.notify_slack
+import mercari_bot.progress
+from mercari_bot.config import AppConfig, ProfileConfig
+
+_MAX_RETRY_COUNT = 1
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -148,6 +152,47 @@ def execute(
     progress: mercari_bot.progress.ProgressDisplay | None = None,
     clear_profile_on_browser_error: bool = False,
 ) -> int:
+    """メルカリ値下げ処理を実行する。
+
+    セッションエラー（ブラウザクラッシュ等）が発生した場合、
+    clear_profile_on_browser_error=True であればプロファイルを削除してリトライする。
+    """
+    for retry in range(_MAX_RETRY_COUNT + 1):
+        try:
+            return _execute_once(
+                config, profile, data_path, dump_path, debug_mode, progress, clear_profile_on_browser_error
+            )
+        except selenium.common.exceptions.InvalidSessionIdException:
+            if retry < _MAX_RETRY_COUNT and clear_profile_on_browser_error:
+                logging.warning(
+                    "セッションエラーが発生しました。プロファイルを削除してリトライします（%d/%d）",
+                    retry + 1,
+                    _MAX_RETRY_COUNT,
+                )
+                if progress is not None:
+                    progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
+                my_lib.selenium_util.delete_profile(profile.name, data_path)
+                continue
+
+            # リトライ限度を超えた、または clear_profile_on_browser_error=False
+            logging.exception("セッションエラーが発生しました（リトライ不可）")
+            if progress is not None:
+                progress.set_status("❌ セッションエラー", is_error=True)
+            return -1
+
+    return -1  # 到達しないはずだが、型チェックのため
+
+
+def _execute_once(
+    config: AppConfig,
+    profile: ProfileConfig,
+    data_path: pathlib.Path,
+    dump_path: pathlib.Path,
+    debug_mode: bool,
+    progress: mercari_bot.progress.ProgressDisplay | None = None,
+    clear_profile_on_browser_error: bool = False,
+) -> int:
+    """メルカリ値下げ処理の1回分の実行。"""
     if progress is not None:
         progress.set_status(f"🤖 ブラウザを起動中... ({profile.name})")
 
@@ -202,8 +247,12 @@ def execute(
             progress.set_status(f"✅ 完了 ({profile.name})")
 
         return 0
+    except selenium.common.exceptions.InvalidSessionIdException:
+        # セッションエラーはリトライのために re-raise する
+        logging.warning("セッションエラーが発生しました（ブラウザがクラッシュした可能性があります）")
+        raise
     except my_lib.store.mercari.exceptions.LoginError:
-        logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
+        logging.exception("ログインに失敗しました")
         if progress is not None:
             progress.set_status("❌ ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
@@ -211,7 +260,7 @@ def execute(
         )
         return -1
     except Exception:
-        logging.exception("URL: %s", driver.current_url)
+        logging.exception("エラーが発生しました")
         if progress is not None:
             progress.set_status("❌ エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
