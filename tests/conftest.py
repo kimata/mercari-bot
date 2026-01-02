@@ -14,12 +14,6 @@ import pytest
 from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
 from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
-# === 定数 ===
-# プロジェクトルートの tests/evidence/ に画像を保存
-EVIDENCE_DIR = pathlib.Path(__file__).parent / "evidence"
-EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
-
-
 # === 環境モック ===
 @pytest.fixture(scope="session", autouse=True)
 def env_mock():
