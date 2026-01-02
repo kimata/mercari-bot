@@ -7,7 +7,6 @@ variables:
 stages:
     - generate-tag
     - build-image
-    - pre-test
     - test
     - tag-latest
     - deploy
@@ -64,7 +63,7 @@ build-image:
             - target.yaml
 
 test-prepare:
-    stage: pre-test
+    stage: build-image
 
     needs: []
 
