@@ -6,8 +6,10 @@ import logging.handlers
 import pathlib
 import re
 import time
+import traceback
 from typing import TYPE_CHECKING, Any
 
+import my_lib.notify.slack
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
 import my_lib.store.mercari.login
@@ -178,6 +180,11 @@ def execute(
             logging.exception("セッションエラーが発生しました（リトライ不可）")
             if progress is not None:
                 progress.set_status("❌ セッションエラー", is_error=True)
+            my_lib.notify.slack.error(
+                config.slack,
+                "メルカリセッションエラー",
+                traceback.format_exc(),
+            )
             return -1
 
     return -1  # 到達しないはずだが、型チェックのため
@@ -252,7 +259,7 @@ def _execute_once(
         logging.warning("セッションエラーが発生しました（ブラウザがクラッシュした可能性があります）")
         raise
     except my_lib.store.mercari.exceptions.LoginError:
-        logging.exception("ログインに失敗しました")
+        logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
         if progress is not None:
             progress.set_status("❌ ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
@@ -260,7 +267,7 @@ def _execute_once(
         )
         return -1
     except Exception:
-        logging.exception("エラーが発生しました")
+        logging.exception("エラーが発生しました: URL: %s", driver.current_url)
         if progress is not None:
             progress.set_status("❌ エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
