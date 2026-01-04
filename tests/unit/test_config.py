@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: S101, S108
 """
 設定パースのテスト
 """

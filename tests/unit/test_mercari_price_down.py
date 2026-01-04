@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: S101
 """
 mercari_price_down モジュールのテスト
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: S101, S106, S108, S311
 """
 デモ用スクリプト
 

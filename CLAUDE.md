@@ -57,9 +57,9 @@ src/
 
 1. `app.py`: 設定読み込み → 各プロファイルに対して `mercari_price_down.execute()` を実行
 2. `mercari_price_down.py`:
-   - `my_lib.store.mercari.login.execute()` でログイン
-   - `my_lib.store.mercari.scrape.iter_items_on_display()` で出品中アイテムを取得
-   - `_execute_item()` で各アイテムの値下げ処理
+    - `my_lib.store.mercari.login.execute()` でログイン
+    - `my_lib.store.mercari.scrape.iter_items_on_display()` で出品中アイテムを取得
+    - `_execute_item()` で各アイテムの値下げ処理
 
 ### 値下げロジック
 
@@ -156,36 +156,36 @@ items.append("value")  # type: ignore[union-attr]
 
 ```yaml
 profile:
-  - name: Profile 1
-    line:
-      user: LINE ユーザ ID
-      pass: LINE パスワード
-    discount:
-      - favorite_count: 10 # お気に入り数が10以上
-        step: 200 # 200円値下げ
-        threshold: 3000 # 3000円が下限
-      - favorite_count: 0 # デフォルト
-        step: 100
-        threshold: 3000
-    interval:
-      hour: 20 # 20時間以内に更新済みならスキップ
+    - name: Profile 1
+      line:
+          user: LINE ユーザ ID
+          pass: LINE パスワード
+      discount:
+          - favorite_count: 10 # お気に入り数が10以上
+            step: 200 # 200円値下げ
+            threshold: 3000 # 3000円が下限
+          - favorite_count: 0 # デフォルト
+            step: 100
+            threshold: 3000
+      interval:
+          hour: 20 # 20時間以内に更新済みならスキップ
 
 # オプション: Slack 通知
 slack:
-  bot_token: xoxp-...
-  from: Mercari Bot
-  info:
-    channel:
-      name: "#mercari"
-  captcha:
-    channel:
-      name: "#captcha"
-      id: XXXXXXXXXXX
-  error:
-    channel:
-      name: "#error"
-      id: XXXXXXXXXXX
-    interval_min: 180
+    bot_token: xoxp-...
+    from: Mercari Bot
+    info:
+        channel:
+            name: "#mercari"
+    captcha:
+        channel:
+            name: "#captcha"
+            id: XXXXXXXXXXX
+    error:
+        channel:
+            name: "#error"
+            id: XXXXXXXXXXX
+        interval_min: 180
 ```
 
 ## 依存関係

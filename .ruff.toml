@@ -20,11 +20,8 @@ select = [
 ]
 ignore = [
     "RUF001", "RUF002", "RUF003",  # 日本語文字の誤検知防止
+    "SIM300",  # Yoda 条件式（範囲チェック a < x < b の書き方を許容）
 ]
-
-[lint.per-file-ignores]
-"src/**/demo*.py" = ["S101", "S106", "S108", "S311"]  # デモ用スクリプトはセキュリティ用途ではない
-"tests/**" = ["S101", "S106", "S108"]  # テストでは assert とハードコードパスワード、/tmp を許可
 
 fixable = ["ALL"]
 unfixable = []

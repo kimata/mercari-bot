@@ -4,7 +4,7 @@
 
 mypy を使用してソースコードの型チェックを実行します。
 """
-# ruff: noqa: S603
+# ruff: noqa: S101, S603
 
 import subprocess
 import sys
