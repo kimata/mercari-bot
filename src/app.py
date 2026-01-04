@@ -27,7 +27,7 @@ import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig
 
-SCHEMA_CONFIG = "schema/config.schema"
+_SCHEMA_CONFIG = "schema/config.schema"
 
 
 def execute(
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         "bot.mercari.inventory", level=log_level, is_str_log=True, log_format=log_format
     )
 
-    config = mercari_bot.config.load(config_file, SCHEMA_CONFIG)
+    config = mercari_bot.config.load(config_file, _SCHEMA_CONFIG)
 
     ret_code = execute(config, notify_log, debug_mode, log_str_io, clear_profile_on_browser_error)
 

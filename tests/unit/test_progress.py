@@ -12,9 +12,9 @@ import rich.style
 
 import mercari_bot.progress
 from mercari_bot.progress import (
-    PROGRESS_ITEM,
-    STATUS_STYLE_ERROR,
-    STATUS_STYLE_NORMAL,
+    _PROGRESS_ITEM,
+    _STATUS_STYLE_ERROR,
+    _STATUS_STYLE_NORMAL,
     ProgressDisplay,
     _DisplayRenderable,
     _NullLive,
@@ -142,7 +142,7 @@ class TestProgressDisplayObserver:
 
         progress.on_total_count(10)
 
-        mock_progress.add_task.assert_called_once_with(PROGRESS_ITEM, total=10)
+        mock_progress.add_task.assert_called_once_with(_PROGRESS_ITEM, total=10)
         assert progress._item_task_id == 1
 
     def test_on_item_start(self):
@@ -288,17 +288,17 @@ class TestRichStyleValidation:
 
     def test_status_bar_styles_are_valid(self):
         """ステータスバーのスタイルが有効"""
-        for style_str in [STATUS_STYLE_NORMAL, STATUS_STYLE_ERROR]:
+        for style_str in [_STATUS_STYLE_NORMAL, _STATUS_STYLE_ERROR]:
             style = rich.style.Style.parse(style_str)
             assert style is not None, f"Invalid style: {style_str}"
 
     def test_normal_style_has_mercari_red(self):
         """通常スタイルがメルカリレッドを含む"""
-        assert "#E72121" in STATUS_STYLE_NORMAL
+        assert "#E72121" in _STATUS_STYLE_NORMAL
 
     def test_error_style_has_red_background(self):
         """エラースタイルが赤背景"""
-        assert "red" in STATUS_STYLE_ERROR.lower()
+        assert "red" in _STATUS_STYLE_ERROR.lower()
 
 
 class TestProgressConstants:
@@ -306,7 +306,7 @@ class TestProgressConstants:
 
     def test_progress_item_label(self):
         """プログレスバーのラベル"""
-        assert PROGRESS_ITEM == "アイテム処理"
+        assert _PROGRESS_ITEM == "アイテム処理"
 
 
 class TestProgressDisplayRefresh:

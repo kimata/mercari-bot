@@ -21,11 +21,11 @@ import rich.table
 import rich.text
 
 # ステータスバーの色定義（メルカリレッド）
-STATUS_STYLE_NORMAL = "bold #FFFFFF on #E72121"
-STATUS_STYLE_ERROR = "bold white on red"
+_STATUS_STYLE_NORMAL = "bold #FFFFFF on #E72121"
+_STATUS_STYLE_ERROR = "bold white on red"
 
 # プログレスバーのラベル
-PROGRESS_ITEM = "アイテム処理"
+_PROGRESS_ITEM = "アイテム処理"
 
 
 class _NullProgress:
@@ -161,7 +161,7 @@ class ProgressDisplay:
 
     def _create_status_bar(self) -> rich.table.Table:
         """ステータスバーを作成（左: タイトル、中央: 進捗、右: 時間）"""
-        style = STATUS_STYLE_ERROR if self._status_is_error else STATUS_STYLE_NORMAL
+        style = _STATUS_STYLE_ERROR if self._status_is_error else _STATUS_STYLE_NORMAL
         elapsed = time.time() - self._start_time
         elapsed_str = f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
 
@@ -232,7 +232,7 @@ class ProgressDisplay:
     # --- ProgressObserver Protocol の実装 ---
     def on_total_count(self, count: int) -> None:
         """アイテム総数が判明したときに呼ばれる（Null Object の場合は何もしない）"""
-        self._item_task_id = self._progress.add_task(PROGRESS_ITEM, total=count)
+        self._item_task_id = self._progress.add_task(_PROGRESS_ITEM, total=count)
         self._refresh_display()
 
     def on_item_start(self, index: int, total: int, item: dict[str, Any]) -> None:

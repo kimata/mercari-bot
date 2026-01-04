@@ -28,11 +28,11 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-FIXTURE_PATH = pathlib.Path(__file__).parent.parent / "tests" / "fixtures" / "mercari_item_titles.json"
+_FIXTURE_PATH = pathlib.Path(__file__).parent.parent / "tests" / "fixtures" / "mercari_item_titles.json"
 
 # 確率設定
-SKIP_MODIFIED_HOUR_RATIO = 0.2  # 更新時間が短いのでスキップ
-SKIP_BELOW_THRESHOLD_RATIO = 0.2  # 価格が閾値以下でスキップ
+_SKIP_MODIFIED_HOUR_RATIO = 0.2  # 更新時間が短いのでスキップ
+_SKIP_BELOW_THRESHOLD_RATIO = 0.2  # 価格が閾値以下でスキップ
 
 # 実際の time.sleep を保存（モック前に）
 _real_time_sleep = time.sleep
@@ -40,7 +40,7 @@ _real_time_sleep = time.sleep
 
 def _load_fixture() -> list[str]:
     """フィクスチャファイルからアイテムタイトルを読み込む"""
-    with FIXTURE_PATH.open(encoding="utf-8") as f:
+    with _FIXTURE_PATH.open(encoding="utf-8") as f:
         data = json.load(f)
     return data["titles"]
 
@@ -66,8 +66,8 @@ def _generate_mock_items(
         favorite = random.randint(0, 15)
         view = random.randint(0, 500)
 
-        if rand < SKIP_MODIFIED_HOUR_RATIO + SKIP_BELOW_THRESHOLD_RATIO:
-            if rand >= SKIP_MODIFIED_HOUR_RATIO:
+        if rand < _SKIP_MODIFIED_HOUR_RATIO + _SKIP_BELOW_THRESHOLD_RATIO:
+            if rand >= _SKIP_MODIFIED_HOUR_RATIO:
                 # 20%: 価格が閾値以下になるように設定
                 # price - step < threshold となる価格
                 price = threshold + discount_step - random.randint(10, 500)
@@ -106,7 +106,7 @@ def _create_modified_hour_mock(interval_hour: int) -> Callable[..., int]:
     """_get_modified_hour のモックを作成"""
 
     def mock_get_modified_hour(driver: Any) -> int:
-        if random.random() < SKIP_MODIFIED_HOUR_RATIO:
+        if random.random() < _SKIP_MODIFIED_HOUR_RATIO:
             # 20%: 更新時間が短い（スキップ対象）
             return random.randint(1, interval_hour - 1)
         else:
