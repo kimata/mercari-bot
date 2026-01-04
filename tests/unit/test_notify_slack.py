@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 notify_slack モジュールのテスト
 """
+
 import io
 import pathlib
 import unittest.mock
 
 import PIL.Image
 import pytest
+from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
 
 import mercari_bot.notify_slack
-from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
 
 
 class TestErrorWithScreenshot:
@@ -94,11 +94,9 @@ class TestErrorWithTraceback:
         """traceback が含まれる"""
         with unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error:
             try:
-                raise ValueError("テスト例外")  # noqa: EM101, TRY301
+                raise ValueError("テスト例外")
             except ValueError:
-                mercari_bot.notify_slack.error_with_traceback(
-                    slack_config, "エラー発生", mock_driver
-                )
+                mercari_bot.notify_slack.error_with_traceback(slack_config, "エラー発生", mock_driver)
 
             mock_error.assert_called_once()
             message = mock_error.call_args[0][2]
@@ -110,11 +108,9 @@ class TestErrorWithTraceback:
         """タイトルが渡される"""
         with unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error:
             try:
-                raise RuntimeError("dummy")  # noqa: EM101, TRY301
+                raise RuntimeError("dummy")
             except RuntimeError:
-                mercari_bot.notify_slack.error_with_traceback(
-                    slack_config, "カスタムタイトル", mock_driver
-                )
+                mercari_bot.notify_slack.error_with_traceback(slack_config, "カスタムタイトル", mock_driver)
 
             assert mock_error.call_args[0][1] == "カスタムタイトル"
 
@@ -145,11 +141,9 @@ class TestDumpAndNotifyError:
             unittest.mock.patch("my_lib.notify.slack.error_with_image"),
         ):
             try:
-                raise RuntimeError("test")  # noqa: EM101, TRY301
+                raise RuntimeError("test")
             except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(
-                    slack_config, "エラー", mock_driver, tmp_path
-                )
+                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path)
 
             mock_dump.assert_called_once()
             call_args = mock_dump.call_args[0]
@@ -166,11 +160,9 @@ class TestDumpAndNotifyError:
             unittest.mock.patch("my_lib.notify.slack.error_with_image"),
         ):
             try:
-                raise RuntimeError("test")  # noqa: EM101, TRY301
+                raise RuntimeError("test")
             except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(
-                    slack_config, "エラー", mock_driver, tmp_path
-                )
+                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path)
 
             mock_clean.assert_called_once_with(tmp_path)
 
@@ -182,7 +174,7 @@ class TestDumpAndNotifyError:
             unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error,
         ):
             try:
-                raise RuntimeError("テストエラー")  # noqa: EM101, TRY301
+                raise RuntimeError("テストエラー")
             except RuntimeError:
                 mercari_bot.notify_slack.dump_and_notify_error(
                     slack_config, "カスタムタイトル", mock_driver, tmp_path
@@ -202,11 +194,9 @@ class TestDumpAndNotifyError:
             unittest.mock.patch("my_lib.notify.slack.error_with_image"),
         ):
             try:
-                raise RuntimeError("test")  # noqa: EM101, TRY301
+                raise RuntimeError("test")
             except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(
-                    slack_config, "エラー", mock_driver, dump_path
-                )
+                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, dump_path)
 
             assert mock_dump.call_args[0][2] == dump_path
 
@@ -220,11 +210,9 @@ class TestDumpAndNotifyError:
             unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error,
         ):
             try:
-                raise RuntimeError("test")  # noqa: EM101, TRY301
+                raise RuntimeError("test")
             except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(
-                    empty_config, "エラー", mock_driver, tmp_path
-                )
+                mercari_bot.notify_slack.dump_and_notify_error(empty_config, "エラー", mock_driver, tmp_path)
 
             # ダンプは行われる
             mock_dump.assert_called_once()

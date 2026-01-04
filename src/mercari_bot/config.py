@@ -8,10 +8,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import my_lib.config
-from my_lib.notify.mail import MailConfig, MailEmptyConfig, parse_config as parse_mail_config
+from my_lib.notify.mail import MailConfig, MailEmptyConfig
+from my_lib.notify.mail import parse_config as parse_mail_config
 from my_lib.notify.slack import (
     SlackConfig,
     SlackEmptyConfig,
+)
+from my_lib.notify.slack import (
     parse_config as parse_slack_config,
 )
 from my_lib.store.mercari.config import (
@@ -101,7 +104,7 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
     raw_config = my_lib.config.load(config_path, schema_path)
 
     slack_config = parse_slack_config(raw_config["slack"])
-    if not isinstance(slack_config, (SlackConfig, SlackEmptyConfig)):
+    if not isinstance(slack_config, SlackConfig | SlackEmptyConfig):
         msg = "Slack 設定には info, captcha, error の全てが必要です（または全て省略）"
         raise ValueError(msg)
 

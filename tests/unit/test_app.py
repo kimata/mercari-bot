@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 app.py のテスト
 
 mercari_price_down をモックして UI フローをテストします。
 """
+
 import io
 import pathlib
 import unittest.mock
 
 import pytest
+from my_lib.notify.slack import SlackEmptyConfig
 
 import app
 import mercari_bot.progress
 from mercari_bot.config import AppConfig, DataConfig, ProfileConfig
-from my_lib.notify.slack import SlackEmptyConfig
 
 
 class TestExecute:
@@ -37,15 +37,9 @@ class TestExecute:
         """正常実行"""
         with (
             unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0) as mock_execute,
-            unittest.mock.patch.object(
-                mercari_bot.progress.ProgressDisplay, "start"
-            ) as mock_start,
-            unittest.mock.patch.object(
-                mercari_bot.progress.ProgressDisplay, "stop"
-            ) as mock_stop,
-            unittest.mock.patch.object(
-                mercari_bot.progress.ProgressDisplay, "set_status"
-            ) as mock_status,
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start") as mock_start,
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop") as mock_stop,
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status") as mock_status,
         ):
             ret = app.execute(mock_config, notify_log=False, debug_mode=True, log_str_io=None)
 
@@ -127,9 +121,7 @@ class TestExecute:
                 side_effect=Exception("Test error"),
             ),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
-            unittest.mock.patch.object(
-                mercari_bot.progress.ProgressDisplay, "stop"
-            ) as mock_stop,
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop") as mock_stop,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
             pytest.raises(Exception, match="Test error"),
         ):
@@ -253,9 +245,7 @@ class TestProgressIntegration:
             unittest.mock.patch.object(
                 mercari_bot.progress.ProgressDisplay, "start", side_effect=track_start
             ),
-            unittest.mock.patch.object(
-                mercari_bot.progress.ProgressDisplay, "stop", side_effect=track_stop
-            ),
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop", side_effect=track_stop),
             unittest.mock.patch.object(
                 mercari_bot.progress.ProgressDisplay, "set_status", side_effect=track_status
             ),

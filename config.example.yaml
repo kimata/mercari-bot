@@ -1,19 +1,20 @@
 profile:
-    - name: Profile 1
-      line:
-        user: LINE のユーザ ID
-        pass: LINE のログインパスワード
+  - name: Profile 1
+    line:
+      user: LINE のユーザ ID
+      pass: LINE のログインパスワード
 
-      discount:
-        - favorite_count: 10 # いいねの数がこの数以上だった場合に適用
-          step: 200 # 1回あたりの値下げ幅〔円〕
-          threshold: 3000 # 値下げを止める価格〔円〕
-        - favorite_count: 0 # いいねの数がこの数以上だった場合に適用
-          step: 100 # 1回あたりの値下げ幅〔円〕
-          threshold: 3000 # 値下げを止める価格〔円〕
+    discount:
+      - favorite_count: 10 # いいねの数がこの数以上だった場合に適用
+        step: 200 # 1回あたりの値下げ幅〔円〕
+        threshold: 3000 # 値下げを止める価格〔円〕
+      - favorite_count: 0 # いいねの数がこの数以上だった場合に適用
+        step: 100 # 1回あたりの値下げ幅〔円〕
+        threshold: 3000 # 値下げを止める価格〔円〕
 
-      interval:
-        hour: 20 # 更新時間がこの時間より短い場合，スキップ
+    interval:
+      hour: 20 # 更新時間がこの時間より短い場合，スキップ
+
 
 # 動作ログをメールで送信する場合，以下を設定
 # mail:

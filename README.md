@@ -28,6 +28,7 @@
 ## 🏗️ システム構成
 
 ### アプリケーション
+
 - **言語**: Python 3.10+
 - **自動化**: Selenium WebDriver
 - **音声処理**: SpeechRecognition + pydub
@@ -35,6 +36,7 @@
 - **設定管理**: YAML + JSON Schema
 
 ### インフラ
+
 - **コンテナ**: Docker / Docker Compose
 - **オーケストレーション**: Kubernetes (CronJob)
 - **パッケージ管理**: uv
@@ -64,19 +66,19 @@ cp config.example.yaml config.yaml
 
 ```yaml
 profile:
-    - name: Profile 1
-      line:
-          user: LINE のユーザ ID
-          pass: LINE のログインパスワード
-      discount:
-          - favorite_count: 10    # お気に入り数10以上の場合
-            step: 200            # 値下げ幅（円）
-            threshold: 3000      # 最低価格（これ以下には値下げしない）
-          - favorite_count: 0     # デフォルト設定
-            step: 100
-            threshold: 3000
-      interval:
-          hour: 20              # この時間内に更新済みならスキップ
+  - name: Profile 1
+    line:
+      user: LINE のユーザ ID
+      pass: LINE のログインパスワード
+    discount:
+      - favorite_count: 10 # お気に入り数10以上の場合
+        step: 200 # 値下げ幅（円）
+        threshold: 3000 # 最低価格（これ以下には値下げしない）
+      - favorite_count: 0 # デフォルト設定
+        step: 100
+        threshold: 3000
+    interval:
+      hour: 20 # この時間内に更新済みならスキップ
 ```
 
 ### 3. 通知設定（オプション）
@@ -85,20 +87,20 @@ Slack通知を使用する場合：
 
 ```yaml
 slack:
-    bot_token: xoxp-XXXXXXXXXXXX-XXXXXXXXXXXX...
-    from: Mercari Bot
-    info:
-        channel:
-            name: "#mercari"
-    captcha:
-        channel:
-            name: "#captcha"
-            id: XXXXXXXXXXX
-    error:
-        channel:
-            name: "#error"
-            id: XXXXXXXXXXX
-        interval_min: 180
+  bot_token: xoxp-XXXXXXXXXXXX-XXXXXXXXXXXX...
+  from: Mercari Bot
+  info:
+    channel:
+      name: "#mercari"
+  captcha:
+    channel:
+      name: "#captcha"
+      id: XXXXXXXXXXX
+  error:
+    channel:
+      name: "#error"
+      id: XXXXXXXXXXX
+    interval_min: 180
 ```
 
 ## 💻 実行方法
@@ -171,18 +173,18 @@ kubectl apply -f kubernetes/mercari-bot.yaml
 
 ```yaml
 discount:
-    - favorite_count: 20    # お気に入り20以上
-      step: 300            # 300円値下げ
-      threshold: 5000      # 5000円が下限
-    - favorite_count: 10    # お気に入り10以上
-      step: 200            # 200円値下げ
-      threshold: 3000      # 3000円が下限
-    - favorite_count: 0     # すべてのアイテム（デフォルト）
-      step: 100            # 100円値下げ
-      threshold: 1000      # 1000円が下限
+  - favorite_count: 20 # お気に入り20以上
+    step: 300 # 300円値下げ
+    threshold: 5000 # 5000円が下限
+  - favorite_count: 10 # お気に入り10以上
+    step: 200 # 200円値下げ
+    threshold: 3000 # 3000円が下限
+  - favorite_count: 0 # すべてのアイテム（デフォルト）
+    step: 100 # 100円値下げ
+    threshold: 1000 # 1000円が下限
 
 interval:
-    hour: 24              # 24時間以内に更新済みならスキップ
+  hour: 24 # 24時間以内に更新済みならスキップ
 ```
 
 ### データディレクトリ設定
@@ -191,8 +193,8 @@ Seleniumのプロファイルやデバッグデータの保存先を設定：
 
 ```yaml
 data:
-    selenium: ./data          # Chromeプロファイル等の保存先
-    dump: ./data/debug        # デバッグ時のスクリーンショット保存先
+  selenium: ./data # Chromeプロファイル等の保存先
+  dump: ./data/debug # デバッグ時のスクリーンショット保存先
 ```
 
 ## 🧪 開発
@@ -223,6 +225,7 @@ uv run flake8 src/
 ## 📊 CI/CD
 
 GitHub Actions による自動化：
+
 - Dockerイメージのビルドとプッシュ
 - 依存関係の自動更新（Renovate）
 - セキュリティスキャン

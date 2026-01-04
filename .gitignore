@@ -43,7 +43,6 @@ htmlcov/
 .pytest_cache/
 .hypothesis/
 reports/
-tests/data/
 
 # =============================================================================
 # Type checkers

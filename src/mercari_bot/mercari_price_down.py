@@ -9,6 +9,7 @@ import time
 import traceback
 from typing import TYPE_CHECKING, Any
 
+import my_lib.chrome_util
 import my_lib.notify.slack
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
@@ -91,10 +92,10 @@ def _execute_item(
 
     value_attr = driver.find_element(By.XPATH, '//input[@name="price"]').get_attribute("value")
     if value_attr is None:
-        raise RuntimeError("価格の取得に失敗しました。")  # noqa: EM101
+        raise RuntimeError("価格の取得に失敗しました。")
     cur_price = int(value_attr)
     if cur_price != price:
-        raise RuntimeError("ページ遷移中に価格が変更されました。")  # noqa: EM101
+        raise RuntimeError("ページ遷移中に価格が変更されました。")
 
     discount_step = mercari_bot.logic.get_discount_step(profile, price, shipping_fee, item["favorite"])
     if discount_step is None:
@@ -109,6 +110,10 @@ def _execute_item(
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "変更する")]')
 
     time.sleep(1)
+    # NOTE: 「出品情報の確認」ポップアップが表示される場合がある
+    my_lib.selenium_util.click_xpath(
+        driver, '//button[contains(text(), "このまま変更を確定する")]', is_warn=False
+    )
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "このまま出品する")]', is_warn=False)
 
     my_lib.selenium_util.wait_patiently(
@@ -173,7 +178,7 @@ def execute(
                 )
                 if progress is not None:
                     progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
-                my_lib.selenium_util.delete_profile(profile.name, data_path)
+                my_lib.chrome_util.delete_profile(profile.name, data_path)
                 continue
 
             # リトライ限度を超えた、または clear_profile_on_browser_error=False
@@ -211,7 +216,7 @@ def _execute_once(
             progress.set_status("❌ ブラウザ起動エラー", is_error=True)
 
         if clear_profile_on_browser_error:
-            my_lib.selenium_util.delete_profile(profile.name, data_path)
+            my_lib.chrome_util.delete_profile(profile.name, data_path)
 
         raise
 

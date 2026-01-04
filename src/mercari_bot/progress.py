@@ -12,7 +12,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 import rich.console
 import rich.live
@@ -31,7 +31,7 @@ PROGRESS_ITEM = "アイテム処理"
 class _NullProgress:
     """非TTY環境用の何もしない Progress（Null Object パターン）"""
 
-    tasks: list[rich.progress.Task] = []
+    tasks: ClassVar[list[rich.progress.Task]] = []
 
     def add_task(self, description: str, total: float | None = None) -> rich.progress.TaskID:
         return rich.progress.TaskID(0)

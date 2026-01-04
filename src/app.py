@@ -86,7 +86,8 @@ if __name__ == "__main__":
 
     import mercari_bot.config
 
-    assert __doc__ is not None
+    if __doc__ is None:
+        raise RuntimeError("__doc__ is not set")
     args = docopt.docopt(__doc__)
 
     config_file = args["-c"]

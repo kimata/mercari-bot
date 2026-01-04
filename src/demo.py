@@ -60,7 +60,7 @@ def _generate_mock_items(
     items: list[dict[str, Any]] = []
     selected_titles = random.sample(titles, min(count, len(titles)))
 
-    for i, title in enumerate(selected_titles):
+    for _, title in enumerate(selected_titles):
         rand = random.random()
         favorite = random.randint(0, 15)
         view = random.randint(0, 500)
@@ -131,6 +131,9 @@ def _create_mock_driver() -> unittest.mock.MagicMock:
 
 def execute(item_count: int = 20) -> int:
     """デモを実行する"""
+    from my_lib.notify.slack import SlackEmptyConfig
+    from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
+
     import app
     from mercari_bot.config import (
         AppConfig,
@@ -139,8 +142,6 @@ def execute(item_count: int = 20) -> int:
         IntervalConfig,
         ProfileConfig,
     )
-    from my_lib.notify.slack import SlackEmptyConfig
-    from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
     # 設定値
     interval_hour = 20
@@ -270,9 +271,7 @@ def execute(item_count: int = 20) -> int:
 
     # Selenium 関連をすべてモック
     with (
-        unittest.mock.patch(
-            "my_lib.selenium_util.create_driver", return_value=mock_driver
-        ),
+        unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
         unittest.mock.patch("my_lib.selenium_util.clear_cache"),
         unittest.mock.patch("my_lib.store.mercari.login.execute") as mock_login,
         unittest.mock.patch(
@@ -325,7 +324,6 @@ def execute(item_count: int = 20) -> int:
 
 if __name__ == "__main__":
     import docopt
-
     import my_lib.logger
 
     assert __doc__ is not None
@@ -337,9 +335,7 @@ if __name__ == "__main__":
     # TTY 環境では SIMPLE_FORMAT を使用して Rich Live と干渉しないようにする
     log_format = my_lib.logger.SIMPLE_FORMAT if sys.stdout.isatty() else None
 
-    my_lib.logger.init(
-        "demo.mercari", level=logging.INFO, log_format=log_format
-    )
+    my_lib.logger.init("demo.mercari", level=logging.INFO, log_format=log_format)
 
     ret_code = execute(item_count)
     sys.exit(ret_code)

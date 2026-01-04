@@ -1,180 +1,180 @@
 name: Make release
 on:
-    push:
-        tags:
-            - "v[0-9]*.[0-9]*"
-            - "v[0-9]*.[0-9]*.[0-9]*"
-            - "v[0-9]*.[0-9]*.[0-9]*.[0-9]*"
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*.[0-9]*"
 
 env:
-    PROJECT_NAME: mercari-bot
-    SCRIPT_NAME: src/app.py
+  PROJECT_NAME: mercari-bot
+  SCRIPT_NAME: src/app.py
 
 jobs:
-    prepare:
-        outputs:
-            version: ${{ steps.set_version.outputs.value }}
+  prepare:
+    outputs:
+      version: ${{ steps.set_version.outputs.value }}
 
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Set version
-              id: set_version
-              run: echo "value=$(echo ${{ github.ref_name }} | sed 's/v//')" >> "$GITHUB_OUTPUT"
+    steps:
+      - name: Set version
+        id: set_version
+        run: echo "value=$(echo ${{ github.ref_name }} | sed 's/v//')" >> "$GITHUB_OUTPUT"
 
-    build:
-        needs: prepare
+  build:
+    needs: prepare
 
-        strategy:
-            matrix:
-                os: [ubuntu-latest, windows-latest, macos-14]
-            fail-fast: false
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+      fail-fast: false
 
-        runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
 
-        steps:
-            - name: Check-out repository
-              uses: actions/checkout@v3
+    steps:
+      - name: Check-out repository
+        uses: actions/checkout@v3
 
-            - name: Setup Python
-              uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
 
-            - name: Install uv
-              uses: astral-sh/setup-uv@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
 
-            - name: Install Dependencies
-              run: |
-                uv sync
+      - name: Install Dependencies
+        run: |
+          uv sync
 
-            - name: Build Executable
-              shell: bash
-              run: |
-                # 基本オプション
-                COMMON_OPTS="--mode=app --product-name=${{ env.PROJECT_NAME }} --file-version=${{ needs.prepare.outputs.version }} --product-version=${{ needs.prepare.outputs.version }} --include-package-data=selenium --include-package=jinxed --no-deployment-flag=self-execution --assume-yes-for-downloads --output-dir=build"
+      - name: Build Executable
+        shell: bash
+        run: |
+          # 基本オプション
+          COMMON_OPTS="--mode=app --product-name=${{ env.PROJECT_NAME }} --file-version=${{ needs.prepare.outputs.version }} --product-version=${{ needs.prepare.outputs.version }} --include-package-data=selenium --include-package=jinxed --no-deployment-flag=self-execution --assume-yes-for-downloads --output-dir=build"
 
-                # 未使用の my_lib モジュールを除外
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sensor --nofollow-import-to=my_lib.sensor_data"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.notify.line --nofollow-import-to=my_lib.notify.mail"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.store.amazon"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.webapp --nofollow-import-to=my_lib.flask_util"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.weather --nofollow-import-to=my_lib.rpi"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sqlite_util --nofollow-import-to=my_lib.voice"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.healthz --nofollow-import-to=my_lib.fluentd_util"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.git_util --nofollow-import-to=my_lib.plot_util"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.panel_util --nofollow-import-to=my_lib.panel_config"
+          # 未使用の my_lib モジュールを除外
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sensor --nofollow-import-to=my_lib.sensor_data"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.notify.line --nofollow-import-to=my_lib.notify.mail"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.store.amazon"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.webapp --nofollow-import-to=my_lib.flask_util"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.weather --nofollow-import-to=my_lib.rpi"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.sqlite_util --nofollow-import-to=my_lib.voice"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.healthz --nofollow-import-to=my_lib.fluentd_util"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.git_util --nofollow-import-to=my_lib.plot_util"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=my_lib.panel_util --nofollow-import-to=my_lib.panel_config"
 
-                # 未使用のサードパーティパッケージを除外
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=smbus2 --nofollow-import-to=serial"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=influxdb_client --nofollow-import-to=linebot"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=sseclient --nofollow-import-to=uptime"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=git --nofollow-import-to=gitdb"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=flask --nofollow-import-to=werkzeug"
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=genson --nofollow-import-to=lxml"
+          # 未使用のサードパーティパッケージを除外
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=smbus2 --nofollow-import-to=serial"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=influxdb_client --nofollow-import-to=linebot"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=sseclient --nofollow-import-to=uptime"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=git --nofollow-import-to=gitdb"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=flask --nofollow-import-to=werkzeug"
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=genson --nofollow-import-to=lxml"
 
-                # テストモジュールを除外
-                COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=*.tests --nofollow-import-to=pytest"
+          # テストモジュールを除外
+          COMMON_OPTS="$COMMON_OPTS --nofollow-import-to=*.tests --nofollow-import-to=pytest"
 
-                if [ "$RUNNER_OS" == "Windows" ]; then
-                  uv run python -m nuitka $COMMON_OPTS --windows-icon-from-ico=img/icon.png --output-filename=${{ env.PROJECT_NAME }}.exe ${{ env.SCRIPT_NAME }}
-                elif [ "$RUNNER_OS" == "macOS" ]; then
-                  uv run python -m nuitka $COMMON_OPTS --macos-app-icon=img/icon.png --macos-app-name=${{ env.PROJECT_NAME }} ${{ env.SCRIPT_NAME }}
-                else
-                  uv run python -m nuitka $COMMON_OPTS --output-filename=${{ env.PROJECT_NAME }}.bin ${{ env.SCRIPT_NAME }}
-                fi
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            uv run python -m nuitka $COMMON_OPTS --windows-icon-from-ico=img/icon.png --output-filename=${{ env.PROJECT_NAME }}.exe ${{ env.SCRIPT_NAME }}
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            uv run python -m nuitka $COMMON_OPTS --macos-app-icon=img/icon.png --macos-app-name=${{ env.PROJECT_NAME }} ${{ env.SCRIPT_NAME }}
+          else
+            uv run python -m nuitka $COMMON_OPTS --output-filename=${{ env.PROJECT_NAME }}.bin ${{ env.SCRIPT_NAME }}
+          fi
 
-            - name: Check if secret exists
-              id: check_secret
-              shell: pwsh
-              run: |
-                if ("${{ secrets.PASSWORD }}" -ne "") {
-                  Write-Output "secret_exists=true" >> $env:GITHUB_OUTPUT
-                } else {
-                  Write-Output "secret_exists=false" >> $env:GITHUB_OUTPUT
-                }
+      - name: Check if secret exists
+        id: check_secret
+        shell: pwsh
+        run: |
+          if ("${{ secrets.PASSWORD }}" -ne "") {
+            Write-Output "secret_exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Output "secret_exists=false" >> $env:GITHUB_OUTPUT
+          }
 
-            - name: Sign code
-              if: (runner.os == 'Windows') && (steps.check_secret.outputs.secret_exists == 'true')
-              shell: pwsh
-              run: |
-                # Find signtool.exe in Windows SDK
-                $sdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
-                  Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
-                  Sort-Object Name -Descending |
-                  Select-Object -First 1
-                if (-not $sdkPath) {
-                  Write-Error "Windows SDK not found"
-                  exit 1
-                }
-                $signtool = Join-Path $sdkPath.FullName "x64\signtool.exe"
-                Write-Host "Using signtool: $signtool"
+      - name: Sign code
+        if: (runner.os == 'Windows') && (steps.check_secret.outputs.secret_exists == 'true')
+        shell: pwsh
+        run: |
+          # Find signtool.exe in Windows SDK
+          $sdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+          if (-not $sdkPath) {
+            Write-Error "Windows SDK not found"
+            exit 1
+          }
+          $signtool = Join-Path $sdkPath.FullName "x64\signtool.exe"
+          Write-Host "Using signtool: $signtool"
 
-                # Decode certificate
-                $certPath = "$env:RUNNER_TEMP\signcert.p12"
-                $certData = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE }}")
-                [System.IO.File]::WriteAllBytes($certPath, $certData)
+          # Decode certificate
+          $certPath = "$env:RUNNER_TEMP\signcert.p12"
+          $certData = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE }}")
+          [System.IO.File]::WriteAllBytes($certPath, $certData)
 
-                # Sign the executable
-                & $signtool sign /f $certPath /p "${{ secrets.PASSWORD }}" /fd sha256 /tr http://timestamp.digicert.com /td sha256 "build/${{ env.PROJECT_NAME }}.exe"
-                if ($LASTEXITCODE -ne 0) {
-                  Write-Error "Code signing failed"
-                  exit 1
-                }
+          # Sign the executable
+          & $signtool sign /f $certPath /p "${{ secrets.PASSWORD }}" /fd sha256 /tr http://timestamp.digicert.com /td sha256 "build/${{ env.PROJECT_NAME }}.exe"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Code signing failed"
+            exit 1
+          }
 
-                # Clean up certificate
-                Remove-Item $certPath -Force
+          # Clean up certificate
+          Remove-Item $certPath -Force
 
-            - name: Copy bundle file
-              run: |
-                cp README.md build/README.md
-                cp config.example.yaml build/config.example.yaml
+      - name: Copy bundle file
+        run: |
+          cp README.md build/README.md
+          cp config.example.yaml build/config.example.yaml
 
-            - name: Upload Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                name: "${{ matrix.os }} build"
-                path: |
-                    build/*.exe
-                    build/*.bin
-                    build/*.app/**/*
-                    build/config.example.yaml
-                    build/README.md
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.os }} build"
+          path: |
+            build/*.exe
+            build/*.bin
+            build/*.app/**/*
+            build/config.example.yaml
+            build/README.md
 
-    release:
-        needs: [prepare, build]
+  release:
+    needs: [prepare, build]
 
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Download all artifacts
-              uses: actions/download-artifact@v4
-              with:
-                path: artifacts
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-            - name: Prepare release assets
-              run: |
-                VERSION=${{ needs.prepare.outputs.version }}
+      - name: Prepare release assets
+        run: |
+          VERSION=${{ needs.prepare.outputs.version }}
 
-                # Ubuntu
-                mkdir -p ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
-                cp -r artifacts/ubuntu-latest\ build/* ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/
-                chmod -f +x ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/*.bin || true
-                zip -r ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
+          # Ubuntu
+          mkdir -p ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
+          cp -r artifacts/ubuntu-latest\ build/* ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/
+          chmod -f +x ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}/*.bin || true
+          zip -r ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${VERSION}
 
-                # Windows
-                mkdir -p ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
-                cp -r artifacts/windows-latest\ build/* ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}/
-                zip -r ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
+          # Windows
+          mkdir -p ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
+          cp -r artifacts/windows-latest\ build/* ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}/
+          zip -r ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-windows_x64-binary-${VERSION}
 
-                # macOS
-                mkdir -p ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
-                cp -r artifacts/macos-14\ build/* ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}/
-                zip -r ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
+          # macOS
+          mkdir -p ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
+          cp -r artifacts/macos-14\ build/* ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}/
+          zip -r ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}.zip ${{ env.PROJECT_NAME }}-macos_apple-binary-${VERSION}
 
-            - name: Create release
-              uses: softprops/action-gh-release@v2
-              with:
-                name: Release ${{ github.ref_name }}
-                files: |
-                  ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${{ needs.prepare.outputs.version }}.zip
-                  ${{ env.PROJECT_NAME }}-windows_x64-binary-${{ needs.prepare.outputs.version }}.zip
-                  ${{ env.PROJECT_NAME }}-macos_apple-binary-${{ needs.prepare.outputs.version }}.zip
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          files: |
+            ${{ env.PROJECT_NAME }}-ubuntu_x64-binary-${{ needs.prepare.outputs.version }}.zip
+            ${{ env.PROJECT_NAME }}-windows_x64-binary-${{ needs.prepare.outputs.version }}.zip
+            ${{ env.PROJECT_NAME }}-macos_apple-binary-${{ needs.prepare.outputs.version }}.zip

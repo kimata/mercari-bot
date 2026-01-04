@@ -48,7 +48,9 @@ repos:
 
           - id: check-gitkeep
             name: Check data/.gitkeep exists
-            entry: "bash -c '[ ! -d data ] || [ -f data/.gitkeep ] || (echo \"ERROR: data/.gitkeep is missing!\" && exit 1)'"
+            entry: >
+                bash -c '[ ! -d data ] || [ -f data/.gitkeep ] ||
+                (echo "ERROR: data/.gitkeep is missing!" && exit 1)'
             language: system
             always_run: true
             pass_filenames: false

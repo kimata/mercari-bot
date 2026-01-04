@@ -1,0 +1,36 @@
+cache-dir = "~/.cache/ruff"
+
+line-length = 110
+indent-width = 4
+
+[lint]
+select = [
+    "E",      # pycodestyle errors（基本スタイル）
+    "F",      # Pyflakes（未使用変数、インポートエラー等）
+    "W",      # pycodestyle warnings
+    "I",      # isort（インポート順）
+    "UP",     # pyupgrade（Python モダン化）
+    "B",      # flake8-bugbear（バグの可能性）
+    "SIM",    # flake8-simplify（簡素化）
+    "C4",     # flake8-comprehensions（内包表記）
+    "RUF",    # Ruff 固有ルール
+    "S",      # flake8-bandit（セキュリティ）
+    "PTH",    # flake8-use-pathlib（Path 推奨）
+    "PERF",   # Perflint（パフォーマンス）
+]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # 日本語文字の誤検知防止
+]
+
+[lint.per-file-ignores]
+"src/**/demo*.py" = ["S101", "S106", "S108", "S311"]  # デモ用スクリプトはセキュリティ用途ではない
+"tests/**" = ["S101", "S106", "S108"]  # テストでは assert とハードコードパスワード、/tmp を許可
+
+fixable = ["ALL"]
+unfixable = []
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

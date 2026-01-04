@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 progress モジュールのテスト
 
 Rich による進捗表示のテストです。
 """
+
 import unittest.mock
 
-import pytest
 import rich.style
 
 import mercari_bot.progress
@@ -48,7 +47,9 @@ class TestProgressDisplayBasic:
     def test_start_stop_tty(self):
         """TTY 環境での start/stop"""
         with unittest.mock.patch.object(
-            mercari_bot.progress.rich.console.Console, "is_terminal", new_callable=lambda: property(lambda self: True)
+            mercari_bot.progress.rich.console.Console,
+            "is_terminal",
+            new_callable=lambda: property(lambda self: True),
         ):
             progress = ProgressDisplay()
             progress.start()

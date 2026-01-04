@@ -120,6 +120,7 @@ result.method2()  # type: ignore[union-attr]
 pyright のエラー対策として、各行に `# type: ignore` コメントを記載して回避するのは**最後の手段**とする。
 
 **優先順位：**
+
 1. **型推論できるようにコードを修正する** - 変数の初期化時に型が明確になるようにする
 2. **型アノテーションを追加する** - 関数の引数や戻り値、変数に適切な型を指定する
 3. **Any 型を使用する** - 型情報のないライブラリの場合（上記セクション参照）
@@ -160,14 +161,14 @@ profile:
       user: LINE ユーザ ID
       pass: LINE パスワード
     discount:
-      - favorite_count: 10  # お気に入り数が10以上
-        step: 200           # 200円値下げ
-        threshold: 3000     # 3000円が下限
-      - favorite_count: 0   # デフォルト
+      - favorite_count: 10 # お気に入り数が10以上
+        step: 200 # 200円値下げ
+        threshold: 3000 # 3000円が下限
+      - favorite_count: 0 # デフォルト
         step: 100
         threshold: 3000
     interval:
-      hour: 20              # 20時間以内に更新済みならスキップ
+      hour: 20 # 20時間以内に更新済みならスキップ
 
 # オプション: Slack 通知
 slack:

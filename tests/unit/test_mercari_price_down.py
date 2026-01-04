@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 mercari_price_down モジュールのテスト
 
@@ -325,7 +324,7 @@ class TestExecute:
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
             unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
-            unittest.mock.patch("my_lib.selenium_util.delete_profile") as mock_delete_profile,
+            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete_profile,
         ):
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
@@ -355,7 +354,7 @@ class TestExecute:
                 side_effect=selenium.common.exceptions.InvalidSessionIdException("session deleted"),
             ),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
-            unittest.mock.patch("my_lib.selenium_util.delete_profile") as mock_delete_profile,
+            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete_profile,
         ):
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
@@ -385,7 +384,7 @@ class TestExecute:
                 side_effect=selenium.common.exceptions.InvalidSessionIdException("session deleted"),
             ),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
-            unittest.mock.patch("my_lib.selenium_util.delete_profile") as mock_delete_profile,
+            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete_profile,
         ):
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,

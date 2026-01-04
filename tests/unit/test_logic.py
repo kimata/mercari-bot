@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 logic モジュールのテスト
 
 Selenium に依存しない純粋ロジック関数のテストです。
 """
+
 import pytest
+from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
 import mercari_bot.logic
 from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
-from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
 
 class TestParseModifiedHour:
@@ -237,8 +237,7 @@ class TestGetDiscountStepEdgeCases:
     def test_no_matching_favorite_count(self):
         """どの条件にもマッチしない favorite_count"""
         # favorite_count > 0 を要求する設定
-        from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
-        from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
+        from mercari_bot.config import ProfileConfig
 
         profile = ProfileConfig(
             name="High Favorite Only",

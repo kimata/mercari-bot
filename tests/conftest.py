@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 共通テストフィクスチャ
 
 テスト全体で使用する共通のフィクスチャとヘルパーを定義します。
 """
+
 import logging
-import pathlib
 import unittest.mock
 
 import pytest
+from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
 from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
-from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
+
 
 # === 環境モック ===
 @pytest.fixture(scope="session", autouse=True)

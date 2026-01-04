@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
 """
 設定パースのテスト
 """
+
 import unittest.mock
 
 import pytest
+from my_lib.notify.slack import SlackEmptyConfig
 
 from mercari_bot.config import (
     AppConfig,
@@ -20,7 +21,6 @@ from mercari_bot.config import (
     load,
     log_config_summary,
 )
-from my_lib.notify.slack import SlackEmptyConfig
 
 
 class TestDiscountConfig:
@@ -198,12 +198,8 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=SlackEmptyConfig(),
@@ -237,12 +233,8 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=mock_slack,
@@ -266,12 +258,8 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=SlackEmptyConfig(),
@@ -294,12 +282,8 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=invalid_slack,
@@ -313,24 +297,22 @@ class TestLoad:
         mock_mercari = unittest.mock.MagicMock()
         mock_line = unittest.mock.MagicMock()
 
-        sample_raw_config["profile"].append({
-            "name": "Profile 2",
-            "mercari": {"email": "test2@example.com"},
-            "line": {"user": "user2", "pass": "pass2"},
-            "discount": [
-                {"favorite_count": 5, "step": 150, "threshold": 2000},
-            ],
-            "interval": {"hour": 12},
-        })
+        sample_raw_config["profile"].append(
+            {
+                "name": "Profile 2",
+                "mercari": {"email": "test2@example.com"},
+                "line": {"user": "user2", "pass": "pass2"},
+                "discount": [
+                    {"favorite_count": 5, "step": 150, "threshold": 2000},
+                ],
+                "interval": {"hour": 12},
+            }
+        )
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=SlackEmptyConfig(),
@@ -350,12 +332,8 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config) as mock_load,
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
-            ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ),
+            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
+            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
             unittest.mock.patch(
                 "mercari_bot.config.parse_slack_config",
                 return_value=SlackEmptyConfig(),

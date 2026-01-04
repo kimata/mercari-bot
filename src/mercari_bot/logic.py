@@ -4,6 +4,7 @@
 
 Selenium や DOM アクセスに依存しない、テスト容易な関数を定義します。
 """
+
 from __future__ import annotations
 
 import logging
