@@ -529,3 +529,564 @@ class TestExecuteItemWithSlackConfig:
             mock_notify.assert_called_once()
             # Slack 設定が渡される
             assert mock_notify.call_args[0][0] == mock_config_with_slack.slack
+
+
+class TestBrowserStartupError:
+    """ブラウザ起動エラー時のテスト"""
+
+    @pytest.fixture
+    def mock_config(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """モック AppConfig"""
+        return AppConfig(
+            profile=[profile_config],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(
+                selenium=str(tmp_path / "selenium"),
+                dump=str(tmp_path / "dump"),
+            ),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def test_browser_startup_error_with_profile_delete(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """ブラウザ起動エラー時にプロファイル削除（clear_profile_on_browser_error=True）"""
+        with (
+            unittest.mock.patch(
+                "my_lib.selenium_util.create_driver",
+                side_effect=Exception("ブラウザ起動失敗"),
+            ),
+            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete,
+        ):
+            with pytest.raises(Exception, match="ブラウザ起動失敗"):
+                mercari_bot.mercari_price_down.execute(
+                    mock_config,
+                    profile_config,
+                    tmp_path / "selenium",
+                    tmp_path / "dump",
+                    debug_mode=True,
+                    clear_profile_on_browser_error=True,
+                )
+
+            # プロファイル削除が呼ばれる
+            mock_delete.assert_called_once()
+
+    def test_browser_startup_error_without_profile_delete(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """ブラウザ起動エラー時にプロファイル削除しない（clear_profile_on_browser_error=False）"""
+        with (
+            unittest.mock.patch(
+                "my_lib.selenium_util.create_driver",
+                side_effect=Exception("ブラウザ起動失敗"),
+            ),
+            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete,
+        ):
+            with pytest.raises(Exception, match="ブラウザ起動失敗"):
+                mercari_bot.mercari_price_down.execute(
+                    mock_config,
+                    profile_config,
+                    tmp_path / "selenium",
+                    tmp_path / "dump",
+                    debug_mode=True,
+                    clear_profile_on_browser_error=False,
+                )
+
+            # プロファイル削除は呼ばれない
+            mock_delete.assert_not_called()
+
+    def test_browser_startup_error_with_progress(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """ブラウザ起動エラー時に progress にエラーステータスを設定"""
+        mock_progress = unittest.mock.MagicMock(spec=mercari_bot.progress.ProgressDisplay)
+
+        with (
+            unittest.mock.patch(
+                "my_lib.selenium_util.create_driver",
+                side_effect=Exception("ブラウザ起動失敗"),
+            ),
+            unittest.mock.patch("my_lib.chrome_util.delete_profile"),
+        ):
+            with pytest.raises(Exception, match="ブラウザ起動失敗"):
+                mercari_bot.mercari_price_down.execute(
+                    mock_config,
+                    profile_config,
+                    tmp_path / "selenium",
+                    tmp_path / "dump",
+                    debug_mode=True,
+                    progress=mock_progress,
+                    clear_profile_on_browser_error=True,
+                )
+
+            # エラーステータスが設定される
+            error_calls = [call for call in mock_progress.set_status.call_args_list if "エラー" in call[0][0]]
+            assert len(error_calls) > 0
+            assert any(call[1].get("is_error", False) for call in error_calls)
+
+
+class TestSessionErrorWithProgress:
+    """セッションエラー + progress のテスト"""
+
+    @pytest.fixture
+    def mock_config(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """モック AppConfig"""
+        return AppConfig(
+            profile=[profile_config],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(
+                selenium=str(tmp_path / "selenium"),
+                dump=str(tmp_path / "dump"),
+            ),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def test_session_error_retry_with_progress(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """セッションエラー時にリトライメッセージを progress に表示"""
+        mock_progress = unittest.mock.MagicMock(spec=mercari_bot.progress.ProgressDisplay)
+        mock_driver = unittest.mock.MagicMock()
+
+        call_count = 0
+
+        def login_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise selenium.common.exceptions.InvalidSessionIdException("session deleted")
+            # 2回目は成功
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute", side_effect=login_side_effect),
+            unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
+            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("my_lib.chrome_util.delete_profile"),
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                progress=mock_progress,
+                clear_profile_on_browser_error=True,
+            )
+
+            assert ret == 0  # 成功
+            # リトライメッセージが表示される
+            retry_calls = [
+                call for call in mock_progress.set_status.call_args_list if "リトライ" in call[0][0]
+            ]
+            assert len(retry_calls) >= 1
+
+    def test_session_error_exhausted_with_progress(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """セッションエラーでリトライ上限超過時に progress にエラー表示"""
+        mock_progress = unittest.mock.MagicMock(spec=mercari_bot.progress.ProgressDisplay)
+        mock_driver = unittest.mock.MagicMock()
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.login.execute",
+                side_effect=selenium.common.exceptions.InvalidSessionIdException("session deleted"),
+            ),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("my_lib.chrome_util.delete_profile"),
+            unittest.mock.patch("my_lib.notify.slack.error"),
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                progress=mock_progress,
+                clear_profile_on_browser_error=True,
+            )
+
+            assert ret == -1  # 失敗
+            # セッションエラーのステータス
+            error_calls = [
+                call for call in mock_progress.set_status.call_args_list if "セッションエラー" in call[0][0]
+            ]
+            assert len(error_calls) >= 1
+
+
+class TestLoginErrorWithProgress:
+    """ログインエラー + progress のテスト"""
+
+    @pytest.fixture
+    def mock_config(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """モック AppConfig"""
+        return AppConfig(
+            profile=[profile_config],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(
+                selenium=str(tmp_path / "selenium"),
+                dump=str(tmp_path / "dump"),
+            ),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def test_login_error_with_progress(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """ログインエラー時に progress にエラーステータスを設定"""
+        mock_progress = unittest.mock.MagicMock(spec=mercari_bot.progress.ProgressDisplay)
+        mock_driver = unittest.mock.MagicMock()
+        mock_driver.current_url = "https://jp.mercari.com/test"
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.login.execute",
+                side_effect=my_lib.store.mercari.exceptions.LoginError("ログイン失敗"),
+            ),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("mercari_bot.notify_slack.dump_and_notify_error"),
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                progress=mock_progress,
+            )
+
+            assert ret == -1
+            # ログインエラーステータス
+            error_calls = [
+                call for call in mock_progress.set_status.call_args_list if "ログイン" in call[0][0]
+            ]
+            assert len(error_calls) >= 1
+            # is_error=True で呼ばれる
+            error_with_flag = [call for call in error_calls if call[1].get("is_error", False)]
+            assert len(error_with_flag) >= 1
+
+
+class TestItemHandler:
+    """item_handler ラッパー関数のテスト"""
+
+    @pytest.fixture
+    def mock_config(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """モック AppConfig"""
+        return AppConfig(
+            profile=[profile_config],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(
+                selenium=str(tmp_path / "selenium"),
+                dump=str(tmp_path / "dump"),
+            ),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def test_item_handler_is_called(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """iter_items_on_display から item_handler が呼び出される"""
+        mock_driver = unittest.mock.MagicMock()
+        item = {"is_stop": 1, "name": "テスト商品", "price": 3000, "favorite": 5}  # is_stop=1 でスキップ
+
+        def iter_items_side_effect(driver, wait, debug_mode, handlers, progress_observer=None):
+            # item_handler を呼び出す
+            for handler in handlers:
+                handler(driver, wait, item, debug_mode)
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.scrape.iter_items_on_display",
+                side_effect=iter_items_side_effect,
+            ),
+            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+            )
+
+            # 正常終了（item_handler は呼ばれるが、is_stop=1 なのでスキップ）
+            assert ret == 0
+
+
+class TestExecuteItemPriceChange:
+    """_execute_item の価格変更パスのテスト"""
+
+    @pytest.fixture
+    def mock_driver(self):
+        """モック WebDriver"""
+        driver = unittest.mock.MagicMock()
+        return driver
+
+    @pytest.fixture
+    def mock_wait(self):
+        """モック WebDriverWait"""
+        wait = unittest.mock.MagicMock()
+        return wait
+
+    def test_execute_item_time_sale(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """タイムセール中のアイテムはスキップ"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+
+        # _get_modified_hour が大きい値を返す（更新から時間が経過）
+        mock_element = unittest.mock.MagicMock()
+        mock_element.text = "25時間前"
+        mock_driver.find_element.return_value = mock_element
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch(
+                "my_lib.selenium_util.xpath_exists",
+                return_value=True,  # タイムセールボタンが存在
+            ),
+        ):
+            # タイムセール中なので例外なく終了
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_with_shipping_fee(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """送料ありの場合のテスト"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 5000, "favorite": 5}
+
+        # _get_modified_hour が大きい値を返す
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        # 送料要素
+        mock_shipping_element = unittest.mock.MagicMock()
+        mock_shipping_element.text = "1,000"
+
+        # 価格入力欄
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "4000"  # 5000 - 1000 = 4000
+
+        # 更新後価格（new_price + shipping_fee = 4000 + 1000 = 5000）
+        mock_new_price_element = unittest.mock.MagicMock()
+        mock_new_price_element.text = "5,000"
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if "shipping-fee" in xpath and "number" in xpath:
+                return mock_shipping_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            if 'data-testid="price"' in xpath:
+                return mock_new_price_element
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = [unittest.mock.MagicMock()]  # shipping-fee 要素あり
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
+            unittest.mock.patch("time.sleep"),
+        ):
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_price_mismatch(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """ページ遷移中に価格が変更された場合"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "2500"  # 価格が変更されている
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []  # shipping-fee なし
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            pytest.raises(RuntimeError, match="価格が変更されました"),
+        ):
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_price_attribute_none(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """価格入力欄の value が None の場合"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = None  # value が None
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []  # shipping-fee なし
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            pytest.raises(RuntimeError, match="価格の取得に失敗しました"),
+        ):
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_no_discount(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """割引ステップが None の場合（閾値以下）"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 500, "favorite": 0}  # 閾値以下
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "500"
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+        ):
+            # 割引対象外なので例外なく終了
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_price_change_success(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """価格変更成功（debug_mode=True）"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "3000"
+
+        # 更新後の価格（debug_mode=True なので変更なし、3000 のまま）
+        mock_new_price_element = unittest.mock.MagicMock()
+        mock_new_price_element.text = "3,000"
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            if 'data-testid="price"' in xpath:
+                return mock_new_price_element
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
+            unittest.mock.patch("time.sleep"),
+        ):
+            # 正常終了
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )
+
+    def test_execute_item_price_verification_failed(
+        self, mock_driver, mock_wait, profile_config: ProfileConfig
+    ):
+        """価格変更後の検証で価格が一致しない"""
+        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "3000"
+
+        # 更新後の価格が異なる
+        mock_new_price_element = unittest.mock.MagicMock()
+        mock_new_price_element.text = "2,500"
+
+        def find_element_side_effect(by, xpath):
+            if "merShowMore" in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            if 'data-testid="price"' in xpath:
+                return mock_new_price_element
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
+            unittest.mock.patch("time.sleep"),
+            pytest.raises(RuntimeError, match="編集後の価格が意図したものと異なっています"),
+        ):
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True
+            )

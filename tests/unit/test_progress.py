@@ -9,6 +9,7 @@ Rich による進捗表示のテストです。
 import unittest.mock
 
 import rich.style
+import rich.text
 
 import mercari_bot.progress
 from mercari_bot.progress import (
@@ -330,3 +331,64 @@ class TestProgressDisplayRefresh:
 
         # エラーなく完了
         progress._refresh_display()
+
+
+class TestNullProgress:
+    """_NullProgress のテスト"""
+
+    def test_null_progress_rich_method(self):
+        """__rich__ メソッドが空のテキストを返す"""
+        null_progress = _NullProgress()
+        result = null_progress.__rich__()
+
+        assert isinstance(result, rich.text.Text)
+        assert str(result) == ""
+
+
+class TestNullLive:
+    """_NullLive のテスト"""
+
+    def test_null_live_start(self):
+        """start メソッドが何もしない"""
+        null_live = _NullLive()
+        # 例外なく完了
+        null_live.start()
+
+
+class TestTmuxEnvironment:
+    """TMUX 環境のテスト"""
+
+    def test_status_bar_width_in_tmux(self):
+        """TMUX 環境でステータスバーの幅が -2 される"""
+        import os
+
+        progress = ProgressDisplay()
+        progress._status_text = "テスト"
+
+        original_width = progress._console.width
+
+        with unittest.mock.patch.dict(os.environ, {"TMUX": "/tmp/tmux-1000/default,12345,0"}):  # noqa: S108
+            table = progress._create_status_bar()
+            # テーブルが作成される
+            assert table is not None
+            # TMUX 環境では幅が -2 される
+            assert table.width == original_width - 2
+
+    def test_status_bar_width_without_tmux(self):
+        """非 TMUX 環境でステータスバーの幅がそのまま"""
+        import os
+
+        progress = ProgressDisplay()
+        progress._status_text = "テスト"
+
+        original_width = progress._console.width
+
+        # TMUX 環境変数がない場合
+        env_copy = os.environ.copy()
+        env_copy.pop("TMUX", None)
+        with unittest.mock.patch.dict(os.environ, env_copy, clear=True):
+            table = progress._create_status_bar()
+            # テーブルが作成される
+            assert table is not None
+            # 幅がそのまま
+            assert table.width == original_width
