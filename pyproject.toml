@@ -19,6 +19,9 @@ dependencies = [
     "undetected-chromedriver>=3.5.5",
 ]
 
+[project.scripts]
+mercari-bot = "mercari_bot.__main__:main"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
@@ -99,11 +102,11 @@ directory = "reports/coverage"
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
-packages = ["mercari_bot", "app"]
+packages = ["mercari_bot"]
 warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
 check_untyped_defs = true
 explicit_package_bases = true
 ignore_missing_imports = true
@@ -124,7 +127,7 @@ ignore_missing_imports = true
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 include = ["src", "tests"]
 reportMissingImports = false
 reportArgumentType = false

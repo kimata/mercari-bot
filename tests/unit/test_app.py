@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
 """
-app.py のテスト
+cli.py のテスト
 
 mercari_price_down をモックして UI フローをテストします。
 """
@@ -13,7 +13,7 @@ import unittest.mock
 import pytest
 from my_lib.notify.slack import SlackEmptyConfig
 
-import app
+import mercari_bot.cli as app
 import mercari_bot.progress
 from mercari_bot.config import AppConfig, DataConfig, ProfileConfig
 

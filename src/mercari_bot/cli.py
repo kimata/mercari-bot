@@ -3,7 +3,7 @@
 メルカリに出品中のアイテムの価格を自動的に値下げします。
 
 Usage:
-  app.py [-c CONFIG] [-l] [-D] [-R]
+  mercari-bot [-c CONFIG] [-l] [-D] [-R]
 
 Options:
   -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。 [default: config.yaml]
@@ -19,6 +19,8 @@ import logging
 import pathlib
 import sys
 
+import docopt
+import my_lib.logger
 import my_lib.notify.mail
 import my_lib.notify.slack
 
@@ -79,13 +81,8 @@ def execute(
     return ret_code
 
 
-######################################################################
-if __name__ == "__main__":
-    import docopt
-    import my_lib.logger
-
-    import mercari_bot.config
-
+def main() -> None:
+    """CLI エントリポイント"""
     if __doc__ is None:
         raise RuntimeError("__doc__ is not set")
     args = docopt.docopt(__doc__)
@@ -111,3 +108,7 @@ if __name__ == "__main__":
     logging.info("Finish.")
 
     sys.exit(ret_code)
+
+
+if __name__ == "__main__":
+    main()

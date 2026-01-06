@@ -135,7 +135,7 @@ def execute(item_count: int = 20) -> int:
     from my_lib.notify.slack import SlackEmptyConfig
     from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
-    import app
+    import mercari_bot.cli as app
     from mercari_bot.config import (
         AppConfig,
         DataConfig,
@@ -182,7 +182,7 @@ def execute(item_count: int = 20) -> int:
     def get_price_attribute(name: str) -> str | None:
         if name == "value":
             return str(price_state["current"])
-        return None
+        return None  # pragma: no cover  # value 以外の属性は使用されない
 
     # send_keys で価格更新を検知
     def mock_send_keys(keys: Any) -> None:
@@ -207,7 +207,7 @@ def execute(item_count: int = 20) -> int:
             else:
                 element.text = str(price_state["current"])
         else:
-            element.text = "0"
+            element.text = "0"  # pragma: no cover  # デモでは price 要素のみ使用
         return element
 
     mock_driver.find_element = mock_find_element
