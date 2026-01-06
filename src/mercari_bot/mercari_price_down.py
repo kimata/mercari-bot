@@ -164,35 +164,31 @@ def execute(
     セッションエラー（ブラウザクラッシュ等）が発生した場合、
     clear_profile_on_browser_error=True であればプロファイルを削除してリトライする。
     """
-    for retry in range(_MAX_RETRY_COUNT + 1):
-        try:
-            return _execute_once(
+    try:
+        return my_lib.selenium_util.with_session_retry(
+            lambda: _execute_once(
                 config, profile, data_path, dump_path, debug_mode, progress, clear_profile_on_browser_error
-            )
-        except selenium.common.exceptions.InvalidSessionIdException:
-            if retry < _MAX_RETRY_COUNT and clear_profile_on_browser_error:
-                logging.warning(
-                    "セッションエラーが発生しました。プロファイルを削除してリトライします（%d/%d）",
-                    retry + 1,
-                    _MAX_RETRY_COUNT,
-                )
-                if progress is not None:
-                    progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
-                my_lib.chrome_util.delete_profile(profile.name, data_path)
-                continue
-
-            # リトライ限度を超えた、または clear_profile_on_browser_error=False
-            logging.exception("セッションエラーが発生しました（リトライ不可）")
-            if progress is not None:
-                progress.set_status("❌ セッションエラー", is_error=True)
-            my_lib.notify.slack.error(
-                config.slack,
-                "メルカリセッションエラー",
-                traceback.format_exc(),
-            )
-            return -1
-
-    return -1  # 到達しないはずだが、型チェックのため
+            ),
+            driver_name=profile.name,
+            data_dir=data_path,
+            max_retries=_MAX_RETRY_COUNT,
+            clear_profile_on_error=clear_profile_on_browser_error,
+            on_retry=lambda a, m: (
+                progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
+                if progress is not None
+                else None
+            ),
+        )
+    except selenium.common.exceptions.InvalidSessionIdException:
+        logging.exception("セッションエラーが発生しました（リトライ不可）")
+        if progress is not None:
+            progress.set_status("❌ セッションエラー", is_error=True)
+        my_lib.notify.slack.error(
+            config.slack,
+            "メルカリセッションエラー",
+            traceback.format_exc(),
+        )
+        return -1
 
 
 def _execute_once(
