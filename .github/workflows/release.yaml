@@ -8,7 +8,7 @@ on:
 
 env:
     PROJECT_NAME: mercari-bot
-    SCRIPT_NAME: src/app.py
+    SCRIPT_NAME: src/mercari_bot/__main__.py
 
 jobs:
     prepare:

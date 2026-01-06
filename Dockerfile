@@ -64,4 +64,4 @@ RUN mkdir -p data
 
 ENTRYPOINT ["/usr/bin/tini", "--", "uv", "run", "--no-group", "dev"]
 
-CMD ["./src/app.py", "-l"]
+CMD ["mercari-bot", "-l"]
