@@ -10,15 +10,11 @@ from __future__ import annotations
 import logging
 import re
 
+import mercari_bot.exceptions
 from mercari_bot.config import ProfileConfig
 
-
-class ModifiedTimeParseError(Exception):
-    """更新時間テキストのパースに失敗した場合の例外"""
-
-    def __init__(self, text: str) -> None:
-        self.text = text
-        super().__init__(f"更新時間のパースに失敗しました: {text!r}")
+# 後方互換性のためにエクスポート
+ModifiedTimeParseError = mercari_bot.exceptions.ModifiedTimeParseError
 
 
 def parse_modified_hour(text: str) -> int:

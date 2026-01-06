@@ -9,6 +9,7 @@
 import logging
 import unittest.mock
 
+import my_lib.browser_manager
 import pytest
 from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
@@ -112,6 +113,29 @@ def slack_checker():
             assert notify_hist == [], "通知がされています。"
 
     return SlackChecker()
+
+
+# === BrowserManager モック ===
+@pytest.fixture
+def mock_driver():
+    """モック WebDriver"""
+    driver = unittest.mock.MagicMock()
+    driver.current_url = "https://jp.mercari.com/test"
+    return driver
+
+
+@pytest.fixture
+def mock_wait():
+    """モック WebDriverWait"""
+    return unittest.mock.MagicMock()
+
+
+@pytest.fixture
+def mock_browser_manager(mock_driver, mock_wait):
+    """モック BrowserManager"""
+    manager = unittest.mock.MagicMock(spec=my_lib.browser_manager.BrowserManager)
+    manager.get_driver.return_value = (mock_driver, mock_wait)
+    return manager
 
 
 # === ロギング設定 ===

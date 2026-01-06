@@ -9,7 +9,7 @@ import time
 import traceback
 from typing import TYPE_CHECKING, Any
 
-import my_lib.chrome_util
+import my_lib.browser_manager
 import my_lib.notify.slack
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
@@ -21,6 +21,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 
+import mercari_bot.exceptions
 import mercari_bot.logic
 import mercari_bot.notify_slack
 import mercari_bot.progress
@@ -92,10 +93,10 @@ def _execute_item(
 
     value_attr = driver.find_element(By.XPATH, '//input[@name="price"]').get_attribute("value")
     if value_attr is None:
-        raise RuntimeError("価格の取得に失敗しました。")
+        raise mercari_bot.exceptions.PriceRetrievalError("価格の取得に失敗しました")
     cur_price = int(value_attr)
     if cur_price != price:
-        raise RuntimeError("ページ遷移中に価格が変更されました。")
+        raise mercari_bot.exceptions.PriceChangedError(expected=price, actual=cur_price)
 
     discount_step = mercari_bot.logic.get_discount_step(profile, price, shipping_fee, item["favorite"])
     if discount_step is None:
@@ -141,11 +142,9 @@ def _execute_item(
     )
 
     if new_total_price != (new_price + shipping_fee):
-        error_message = (
-            f"編集後の価格が意図したものと異なっています。"
-            f"(期待値: {new_price + shipping_fee:,}円, 実際: {new_total_price:,}円)"
+        raise mercari_bot.exceptions.PriceVerificationError(
+            expected=new_price + shipping_fee, actual=new_total_price
         )
-        raise RuntimeError(error_message)
 
     logging.info("価格を変更しました。(%s円 -> %s円)", f"{item['price']:,}", f"{new_total_price:,}")
 
@@ -164,61 +163,66 @@ def execute(
     セッションエラー（ブラウザクラッシュ等）が発生した場合、
     clear_profile_on_browser_error=True であればプロファイルを削除してリトライする。
     """
-    try:
-        return my_lib.selenium_util.with_session_retry(
-            lambda: _execute_once(
-                config, profile, data_path, dump_path, debug_mode, progress, clear_profile_on_browser_error
-            ),
-            driver_name=profile.name,
-            data_dir=data_path,
-            max_retries=_MAX_RETRY_COUNT,
-            clear_profile_on_error=clear_profile_on_browser_error,
-            on_retry=lambda a, m: (
-                progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
-                if progress is not None
-                else None
-            ),
-        )
-    except selenium.common.exceptions.InvalidSessionIdException:
-        logging.exception("セッションエラーが発生しました（リトライ不可）")
-        if progress is not None:
-            progress.set_status("❌ セッションエラー", is_error=True)
-        my_lib.notify.slack.error(
-            config.slack,
-            "メルカリセッションエラー",
-            traceback.format_exc(),
-        )
-        return -1
+    browser_manager = my_lib.browser_manager.BrowserManager(
+        profile_name=profile.name,
+        data_dir=data_path,
+        wait_timeout=_WAIT_TIMEOUT_SEC,
+        clear_profile_on_error=clear_profile_on_browser_error,
+    )
+
+    for attempt in range(_MAX_RETRY_COUNT + 1):
+        try:
+            return _execute_once(config, profile, dump_path, debug_mode, progress, browser_manager)
+        except selenium.common.exceptions.InvalidSessionIdException:
+            if attempt < _MAX_RETRY_COUNT:
+                logging.warning(
+                    "セッションエラーが発生しました。リトライします (試行 %d/%d)",
+                    attempt + 1,
+                    _MAX_RETRY_COUNT + 1,
+                )
+                if progress is not None:
+                    progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
+                # BrowserManager を再作成（プロファイルクリアオプション付き）
+                browser_manager = my_lib.browser_manager.BrowserManager(
+                    profile_name=profile.name,
+                    data_dir=data_path,
+                    wait_timeout=_WAIT_TIMEOUT_SEC,
+                    clear_profile_on_error=True,  # リトライ時は常にプロファイルをクリア
+                )
+                continue
+            # リトライ回数を超えた場合
+            logging.exception("セッションエラーが発生しました（リトライ不可）")
+            if progress is not None:
+                progress.set_status("❌ セッションエラー", is_error=True)
+            my_lib.notify.slack.error(
+                config.slack,
+                "メルカリセッションエラー",
+                traceback.format_exc(),
+            )
+            return -1
+
+    return -1  # ここには到達しないはずだが、型チェックのため
 
 
 def _execute_once(
     config: AppConfig,
     profile: ProfileConfig,
-    data_path: pathlib.Path,
     dump_path: pathlib.Path,
     debug_mode: bool,
-    progress: mercari_bot.progress.ProgressDisplay | None = None,
-    clear_profile_on_browser_error: bool = False,
+    progress: mercari_bot.progress.ProgressDisplay | None,
+    browser_manager: my_lib.browser_manager.BrowserManager,
 ) -> int:
     """メルカリ値下げ処理の1回分の実行。"""
     if progress is not None:
         progress.set_status(f"🤖 ブラウザを起動中... ({profile.name})")
 
     try:
-        driver = my_lib.selenium_util.create_driver(profile.name, data_path)
+        driver, wait = browser_manager.get_driver()
     except Exception:
         logging.exception("ブラウザの起動に失敗しました")
         if progress is not None:
             progress.set_status("❌ ブラウザ起動エラー", is_error=True)
-
-        if clear_profile_on_browser_error:
-            my_lib.chrome_util.delete_profile(profile.name, data_path)
-
         raise
-
-    my_lib.selenium_util.clear_cache(driver)
-
-    wait = WebDriverWait(driver, _WAIT_TIMEOUT_SEC)
 
     # NOTE: execute_item に profile を渡すためのラッパー
     def item_handler(
@@ -276,4 +280,4 @@ def _execute_once(
         )
         return -1
     finally:
-        my_lib.selenium_util.quit_driver_gracefully(driver)
+        browser_manager.quit()

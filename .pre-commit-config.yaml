@@ -3,7 +3,9 @@ repos:
       rev: v5.0.0
       hooks:
           - id: trailing-whitespace
+            exclude: \.diff$
           - id: end-of-file-fixer
+            exclude: \.diff$
           - id: check-added-large-files
             args: [--maxkb=4096]
           - id: check-yaml
@@ -14,6 +16,7 @@ repos:
           - id: check-merge-conflict
           - id: mixed-line-ending
             args: ["--fix=lf"]
+            exclude: \.diff$
 
     - repo: local
       hooks:
