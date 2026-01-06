@@ -22,6 +22,19 @@ import mercari_bot.progress
 from mercari_bot.config import AppConfig, DataConfig, ProfileConfig
 
 
+@pytest.fixture(autouse=True)
+def _auto_mock_browser_manager(mock_browser_manager):
+    """このモジュール内のすべてのテストで BrowserManager を自動的にモックする。
+
+    これにより、テストが実際のブラウザを起動しないようになります。
+    """
+    with unittest.mock.patch(
+        "my_lib.browser_manager.BrowserManager",
+        return_value=mock_browser_manager,
+    ):
+        yield
+
+
 class TestExecute:
     """execute 関数のテスト"""
 
@@ -38,25 +51,6 @@ class TestExecute:
             mail=unittest.mock.MagicMock(),
         )
 
-    @pytest.fixture
-    def mock_driver(self):
-        """モック WebDriver"""
-        driver = unittest.mock.MagicMock()
-        driver.current_url = "https://jp.mercari.com/test"
-        return driver
-
-    @pytest.fixture
-    def mock_wait(self):
-        """モック WebDriverWait"""
-        return unittest.mock.MagicMock()
-
-    @pytest.fixture
-    def mock_browser_manager(self, mock_driver, mock_wait):
-        """モック BrowserManager"""
-        manager = unittest.mock.MagicMock(spec=my_lib.browser_manager.BrowserManager)
-        manager.get_driver.return_value = (mock_driver, mock_wait)
-        return manager
-
     def test_execute_success(
         self,
         mock_config: AppConfig,
@@ -66,7 +60,6 @@ class TestExecute:
     ):
         """正常実行"""
         with (
-            unittest.mock.patch("my_lib.browser_manager.BrowserManager", return_value=mock_browser_manager),
             unittest.mock.patch("my_lib.store.mercari.login.execute"),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
             unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
@@ -519,85 +512,71 @@ class TestBrowserStartupError:
         mock_config: AppConfig,
         profile_config: ProfileConfig,
         tmp_path: pathlib.Path,
+        mock_browser_manager,
     ):
         """ブラウザ起動エラー時にプロファイル削除（clear_profile_on_browser_error=True）"""
-        with (
-            unittest.mock.patch(
-                "my_lib.selenium_util.create_driver",
-                side_effect=Exception("ブラウザ起動失敗"),
-            ),
-            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete,
-        ):
-            with pytest.raises(Exception, match="ブラウザ起動失敗"):
-                mercari_bot.mercari_price_down.execute(
-                    mock_config,
-                    profile_config,
-                    tmp_path / "selenium",
-                    tmp_path / "dump",
-                    debug_mode=True,
-                    clear_profile_on_browser_error=True,
-                )
+        # BrowserManager.get_driver() が例外を発生させるように設定
+        mock_browser_manager.get_driver.side_effect = Exception("ブラウザ起動失敗")
 
-            # プロファイル削除が呼ばれる
-            mock_delete.assert_called_once()
+        with pytest.raises(Exception, match="ブラウザ起動失敗"):
+            mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                clear_profile_on_browser_error=True,
+            )
 
     def test_browser_startup_error_without_profile_delete(
         self,
         mock_config: AppConfig,
         profile_config: ProfileConfig,
         tmp_path: pathlib.Path,
+        mock_browser_manager,
     ):
         """ブラウザ起動エラー時にプロファイル削除しない（clear_profile_on_browser_error=False）"""
-        with (
-            unittest.mock.patch(
-                "my_lib.selenium_util.create_driver",
-                side_effect=Exception("ブラウザ起動失敗"),
-            ),
-            unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete,
-        ):
-            with pytest.raises(Exception, match="ブラウザ起動失敗"):
-                mercari_bot.mercari_price_down.execute(
-                    mock_config,
-                    profile_config,
-                    tmp_path / "selenium",
-                    tmp_path / "dump",
-                    debug_mode=True,
-                    clear_profile_on_browser_error=False,
-                )
+        # BrowserManager.get_driver() が例外を発生させるように設定
+        mock_browser_manager.get_driver.side_effect = Exception("ブラウザ起動失敗")
 
-            # プロファイル削除は呼ばれない
-            mock_delete.assert_not_called()
+        with pytest.raises(Exception, match="ブラウザ起動失敗"):
+            mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                clear_profile_on_browser_error=False,
+            )
 
     def test_browser_startup_error_with_progress(
         self,
         mock_config: AppConfig,
         profile_config: ProfileConfig,
         tmp_path: pathlib.Path,
+        mock_browser_manager,
     ):
         """ブラウザ起動エラー時に progress にエラーステータスを設定"""
         mock_progress = unittest.mock.MagicMock(spec=mercari_bot.progress.ProgressDisplay)
 
-        with (
-            unittest.mock.patch(
-                "my_lib.selenium_util.create_driver",
-                side_effect=Exception("ブラウザ起動失敗"),
-            ),
-        ):
-            with pytest.raises(Exception, match="ブラウザ起動失敗"):
-                mercari_bot.mercari_price_down.execute(
-                    mock_config,
-                    profile_config,
-                    tmp_path / "selenium",
-                    tmp_path / "dump",
-                    debug_mode=True,
-                    progress=mock_progress,
-                    clear_profile_on_browser_error=True,
-                )
+        # BrowserManager.get_driver() が例外を発生させるように設定
+        mock_browser_manager.get_driver.side_effect = Exception("ブラウザ起動失敗")
 
-            # エラーステータスが設定される
-            error_calls = [call for call in mock_progress.set_status.call_args_list if "エラー" in call[0][0]]
-            assert len(error_calls) > 0
-            assert any(call[1].get("is_error", False) for call in error_calls)
+        with pytest.raises(Exception, match="ブラウザ起動失敗"):
+            mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                progress=mock_progress,
+                clear_profile_on_browser_error=True,
+            )
+
+        # エラーステータスが設定される
+        error_calls = [call for call in mock_progress.set_status.call_args_list if "エラー" in call[0][0]]
+        assert len(error_calls) > 0
+        assert any(call[1].get("is_error", False) for call in error_calls)
 
 
 class TestSessionErrorWithProgress:

@@ -265,27 +265,22 @@ def execute(item_count: int = 20) -> int:
             _simulate_delay(1.0)
 
     # WebDriverWait のモック
-    mock_wait_class = unittest.mock.MagicMock()
     mock_wait_instance = unittest.mock.MagicMock()
     mock_wait_instance.until = unittest.mock.MagicMock(return_value=True)
-    mock_wait_class.return_value = mock_wait_instance
+
+    # BrowserManager のモック
+    mock_browser_manager = unittest.mock.MagicMock()
+    mock_browser_manager.get_driver.return_value = (mock_driver, mock_wait_instance)
 
     # Selenium 関連をすべてモック
     with (
-        unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
-        unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+        unittest.mock.patch("my_lib.browser_manager.BrowserManager", return_value=mock_browser_manager),
         unittest.mock.patch("my_lib.store.mercari.login.execute") as mock_login,
         unittest.mock.patch(
             "my_lib.store.mercari.scrape.iter_items_on_display",
             side_effect=tracking_mock_iter,
         ),
         unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
-        unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
-        # WebDriverWait をモック
-        unittest.mock.patch(
-            "mercari_bot.mercari_price_down.WebDriverWait",
-            mock_wait_class,
-        ),
         # _execute_item 内で使用される関数のモック
         unittest.mock.patch(
             "mercari_bot.mercari_price_down._get_modified_hour",
