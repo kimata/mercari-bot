@@ -39,7 +39,7 @@ jobs:
 
             - name: Cache python modules
               id: cache-python-modules
-              uses: actions/cache@v4
+              uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5
               env:
                   cache-name: cache-python-modules
               with:
