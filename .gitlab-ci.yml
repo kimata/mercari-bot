@@ -70,6 +70,9 @@ test-typecheck:
 
     needs: []
 
+    before_script:
+        - uv sync --locked --no-editable
+
     script:
         - uv run python -m pyright src/
         - uv run mypy src/
@@ -86,6 +89,9 @@ test-walk-through:
     stage: test
 
     needs: []
+
+    before_script:
+        - uv sync --locked --no-editable
 
     script:
         - uv run pytest
@@ -113,6 +119,7 @@ test-smoke:
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - uv sync --locked --no-editable
 
     script:
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
