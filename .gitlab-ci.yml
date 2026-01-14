@@ -65,31 +65,10 @@ build-image:
             - config.yaml
             - target.yaml
 
-test-prepare:
-    stage: build-image
-
-    needs: []
-
-    script:
-        - uv sync --locked --no-editable
-
-    artifacts:
-        paths:
-            - $UV_CACHE_DIR
-        expire_in: 1 hour
-
-    cache:
-        - key:
-              files:
-                  - uv.lock
-          paths:
-              - $UV_CACHE_DIR
-
 test-typecheck:
     stage: test
 
-    needs:
-        - test-prepare
+    needs: []
 
     script:
         - uv run python -m pyright src/
@@ -105,8 +84,7 @@ test-typecheck:
 test-walk-through:
     stage: test
 
-    needs:
-        - test-prepare
+    needs: []
 
     script:
         - uv run pytest
@@ -179,7 +157,10 @@ test-docker:
         - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
         - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
         # root ユーザーでディレクトリのパーミッションを修正
-        - docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG} -c "chmod -R 777 /opt/mercari-bot/data"
+        - >
+            docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data
+            --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG}
+            -c "chmod -R 777 /opt/mercari-bot/data"
         - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} mercari-bot -D -R
         - sync
 
