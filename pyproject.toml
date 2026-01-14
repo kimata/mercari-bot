@@ -37,6 +37,7 @@ dev = [
     "time-machine>=3.2.0",
     "mypy>=1.19.1",
     "pyright>=1.1.407",
+    "ty>=0.0.1a7",
     "types-pytz>=2025.2.0",
     "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
