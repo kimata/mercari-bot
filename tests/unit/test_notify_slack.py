@@ -139,12 +139,10 @@ class TestDumpAndNotifyError:
         with (
             unittest.mock.patch("my_lib.selenium_util.dump_page") as mock_dump,
             unittest.mock.patch("my_lib.selenium_util.clean_dump"),
-            unittest.mock.patch("my_lib.notify.slack.error_with_image"),
+            unittest.mock.patch("my_lib.notify.slack.notify_error_with_page"),
         ):
-            try:
-                raise RuntimeError("test")
-            except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path)
+            exc = RuntimeError("test")
+            mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path, exc)
 
             mock_dump.assert_called_once()
             call_args = mock_dump.call_args[0]
@@ -158,32 +156,36 @@ class TestDumpAndNotifyError:
         with (
             unittest.mock.patch("my_lib.selenium_util.dump_page"),
             unittest.mock.patch("my_lib.selenium_util.clean_dump") as mock_clean,
-            unittest.mock.patch("my_lib.notify.slack.error_with_image"),
+            unittest.mock.patch("my_lib.notify.slack.notify_error_with_page"),
         ):
-            try:
-                raise RuntimeError("test")
-            except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path)
+            exc = RuntimeError("test")
+            mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, tmp_path, exc)
 
             mock_clean.assert_called_once_with(tmp_path)
 
-    def test_calls_error_with_traceback(self, mock_driver, slack_config, tmp_path):
-        """error_with_traceback が呼ばれる"""
+    def test_calls_notify_error_with_page(self, mock_driver, slack_config, tmp_path):
+        """notify_error_with_page が呼ばれ、ページソースが渡される"""
+        mock_driver.page_source = "<html><body>Test</body></html>"
+
         with (
             unittest.mock.patch("my_lib.selenium_util.dump_page"),
             unittest.mock.patch("my_lib.selenium_util.clean_dump"),
-            unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error,
+            unittest.mock.patch("my_lib.notify.slack.notify_error_with_page") as mock_notify,
         ):
-            try:
-                raise RuntimeError("テストエラー")
-            except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(
-                    slack_config, "カスタムタイトル", mock_driver, tmp_path
-                )
+            exc = RuntimeError("テストエラー")
+            mercari_bot.notify_slack.dump_and_notify_error(
+                slack_config, "カスタムタイトル", mock_driver, tmp_path, exc
+            )
 
-            mock_error.assert_called_once()
-            assert mock_error.call_args[0][1] == "カスタムタイトル"
-            assert "RuntimeError" in mock_error.call_args[0][2]
+            mock_notify.assert_called_once()
+            call_args = mock_notify.call_args[0]
+            assert call_args[0] == slack_config
+            assert call_args[1] == "カスタムタイトル"
+            assert call_args[2] is exc
+            # スクリーンショットは PIL.Image
+            assert isinstance(call_args[3], PIL.Image.Image)
+            # ページソース
+            assert call_args[4] == "<html><body>Test</body></html>"
 
     def test_dump_path_is_pathlib(self, mock_driver, slack_config, tmp_path):
         """dump_path として pathlib.Path を受け付ける"""
@@ -192,12 +194,12 @@ class TestDumpAndNotifyError:
         with (
             unittest.mock.patch("my_lib.selenium_util.dump_page") as mock_dump,
             unittest.mock.patch("my_lib.selenium_util.clean_dump"),
-            unittest.mock.patch("my_lib.notify.slack.error_with_image"),
+            unittest.mock.patch("my_lib.notify.slack.notify_error_with_page"),
         ):
-            try:
-                raise RuntimeError("test")
-            except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(slack_config, "エラー", mock_driver, dump_path)
+            exc = RuntimeError("test")
+            mercari_bot.notify_slack.dump_and_notify_error(
+                slack_config, "エラー", mock_driver, dump_path, exc
+            )
 
             assert mock_dump.call_args[0][2] == dump_path
 
@@ -208,15 +210,13 @@ class TestDumpAndNotifyError:
         with (
             unittest.mock.patch("my_lib.selenium_util.dump_page") as mock_dump,
             unittest.mock.patch("my_lib.selenium_util.clean_dump") as mock_clean,
-            unittest.mock.patch("my_lib.notify.slack.error_with_image") as mock_error,
+            unittest.mock.patch("my_lib.notify.slack.notify_error_with_page") as mock_notify,
         ):
-            try:
-                raise RuntimeError("test")
-            except RuntimeError:
-                mercari_bot.notify_slack.dump_and_notify_error(empty_config, "エラー", mock_driver, tmp_path)
+            exc = RuntimeError("test")
+            mercari_bot.notify_slack.dump_and_notify_error(empty_config, "エラー", mock_driver, tmp_path, exc)
 
             # ダンプは行われる
             mock_dump.assert_called_once()
             mock_clean.assert_called_once()
             # 通知も呼ばれる（SlackEmptyConfig で何もしない）
-            mock_error.assert_called_once()
+            mock_notify.assert_called_once()

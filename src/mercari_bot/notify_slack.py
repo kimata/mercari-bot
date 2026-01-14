@@ -73,26 +73,41 @@ def dump_and_notify_error(
     title: str,
     driver: WebDriver,
     dump_path: pathlib.Path,
+    exception: Exception,
 ) -> None:
     """ページダンプを保存し、エラーを通知する。
 
     例外ハンドラ内で使用します。ページダンプの保存とSlack通知を一括で行います。
+    スクリーンショットとページソース（gzip圧縮）をスレッドに添付します。
 
     Args:
         slack_config: Slack 設定
         title: エラータイトル
         driver: WebDriver
         dump_path: ダンプ保存先パス
+        exception: 発生した例外
 
     Examples:
-        except Exception:
+        except Exception as e:
             logging.exception("URL: %s", driver.current_url)
             mercari_bot.notify_slack.dump_and_notify_error(
-                config.slack, "メルカリエラー", driver, dump_path
+                config.slack, "メルカリエラー", driver, dump_path, e
             )
 
     """
     my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
     my_lib.selenium_util.clean_dump(dump_path)
 
-    error_with_traceback(slack_config, title, driver)
+    # スクリーンショットを取得
+    try:
+        screenshot = PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png()))
+    except Exception:
+        screenshot = None
+
+    # ページソースを取得
+    try:
+        page_source: str | None = driver.page_source
+    except Exception:
+        page_source = None
+
+    my_lib.notify.slack.notify_error_with_page(slack_config, title, exception, screenshot, page_source)

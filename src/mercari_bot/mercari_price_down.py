@@ -263,20 +263,20 @@ def _execute_once(
         # セッションエラーはリトライのために re-raise する
         logging.warning("セッションエラーが発生しました（ブラウザがクラッシュした可能性があります）")
         raise
-    except my_lib.store.mercari.exceptions.LoginError:
+    except my_lib.store.mercari.exceptions.LoginError as e:
         logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
         if progress is not None:
             progress.set_status("❌ ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
-            config.slack, "メルカリログインエラー", driver, dump_path
+            config.slack, "メルカリログインエラー", driver, dump_path, e
         )
         return -1
-    except Exception:
+    except Exception as e:
         logging.exception("エラーが発生しました: URL: %s", driver.current_url)
         if progress is not None:
             progress.set_status("❌ エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
-            config.slack, "メルカリ値下げエラー", driver, dump_path
+            config.slack, "メルカリ値下げエラー", driver, dump_path, e
         )
         return -1
     finally:
