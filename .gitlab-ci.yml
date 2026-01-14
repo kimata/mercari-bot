@@ -4,6 +4,9 @@ variables:
     UV_LINK_MODE: copy
     UV_CACHE_DIR: .uv-cache
 
+    UV_EXTRA_INDEX_URL: "http://proxy:3141/simple/"
+    UV_INSECURE_HOST: "proxy"
+
 stages:
     - generate-tag
     - build-image
