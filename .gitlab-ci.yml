@@ -73,6 +73,7 @@ test-typecheck:
     script:
         - uv run python -m pyright src/
         - uv run mypy src/
+        - uv run ty check src/
 
     cache:
         - key:
