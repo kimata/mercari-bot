@@ -49,6 +49,13 @@ repos:
             types: [python]
             pass_filenames: false
 
+          - id: ty
+            name: Run ty
+            entry: uv run ty check
+            language: system
+            types: [python]
+            pass_filenames: false
+
           - id: check-gitkeep
             name: Check data/.gitkeep exists
             entry: >
