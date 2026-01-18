@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@02f45329179fd6354204f61ba0d9720e8b5be72a",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@13b59adae9ef9ddb6839e8cb923f889d8751102f",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -37,11 +37,9 @@ dev = [
     "time-machine>=3.2.0",
     "mypy>=1.19.1",
     "pyright>=1.1.407",
-    "ty>=0.0.1a7",
     "types-pytz>=2025.2.0",
     "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
-    "types-requests>=2.32.0",
 ]
 
 [tool.uv]
@@ -52,11 +50,6 @@ line-length = 110
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
-
-[tool.ty]
-# tomlkit 等の型定義が不完全なライブラリ向け
-[tool.ty.rules]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
