@@ -7,13 +7,34 @@
 """
 
 import logging
+import pathlib
 import unittest.mock
 
 import my_lib.browser_manager
 import pytest
-from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
+from my_lib.notify.slack import SlackEmptyConfig
+from my_lib.store.mercari.config import LineLoginConfig, MercariItem, MercariLoginConfig
 
-from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
+from mercari_bot.config import AppConfig, DataConfig, DiscountConfig, IntervalConfig, ProfileConfig
+
+
+# === テストユーティリティ ===
+def create_mock_item(
+    name: str = "テスト商品",
+    price: int = 3000,
+    favorite: int = 5,
+    is_stop: int = 0,
+) -> MercariItem:
+    """テスト用の MercariItem を作成する"""
+    return MercariItem(
+        id="test-id",
+        url="https://jp.mercari.com/item/test",
+        name=name,
+        price=price,
+        view=100,
+        favorite=favorite,
+        is_stop=is_stop,
+    )
 
 
 # === 環境モック ===
@@ -136,6 +157,25 @@ def mock_browser_manager(mock_driver, mock_wait):
     manager = unittest.mock.MagicMock(spec=my_lib.browser_manager.BrowserManager)
     manager.get_driver.return_value = (mock_driver, mock_wait)
     return manager
+
+
+# === AppConfig フィクスチャ ===
+@pytest.fixture
+def app_config(profile_config: ProfileConfig, tmp_path: pathlib.Path) -> AppConfig:
+    """テスト用の基本 AppConfig
+
+    profile_config フィクスチャを使用して単一プロファイルの設定を作成します。
+    複数プロファイルや特殊な設定が必要な場合は、個別にフィクスチャを作成してください。
+    """
+    return AppConfig(
+        profile=[profile_config],
+        slack=SlackEmptyConfig(),
+        data=DataConfig(
+            selenium=tmp_path / "selenium",
+            dump=tmp_path / "dump",
+        ),
+        mail=unittest.mock.MagicMock(),
+    )
 
 
 # === ロギング設定 ===

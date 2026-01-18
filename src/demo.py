@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101, S106, S108, S311
+# ruff: noqa: S101, S106, S311
 """
 デモ用スクリプト
 
@@ -21,14 +21,26 @@ import logging
 import pathlib
 import random
 import sys
+import tempfile
 import time
 import unittest.mock
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
+
+from my_lib.store.mercari.config import MercariItem
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 _FIXTURE_PATH = pathlib.Path(__file__).parent.parent / "tests" / "fixtures" / "mercari_item_titles.json"
+
+
+class _PriceState(TypedDict):
+    """価格追跡用の状態"""
+
+    current: int
+    new: int
+    updated: bool
+
 
 # 確率設定
 _SKIP_MODIFIED_HOUR_RATIO = 0.2  # 更新時間が短いのでスキップ
@@ -50,7 +62,7 @@ def _generate_mock_items(
     count: int,
     threshold: int,
     discount_step: int,
-) -> list[dict[str, Any]]:
+) -> list[MercariItem]:
     """モックアイテムを生成する
 
     確率分布に基づいてアイテムを生成:
@@ -58,7 +70,7 @@ def _generate_mock_items(
     - 20%: 価格が閾値以下（price - step < threshold となる価格）
     - 60%: 価格変更対象（price - step >= threshold となる価格）
     """
-    items: list[dict[str, Any]] = []
+    items: list[MercariItem] = []
     selected_titles = random.sample(titles, min(count, len(titles)))
 
     for _, title in enumerate(selected_titles):
@@ -81,16 +93,17 @@ def _generate_mock_items(
             price = random.randint(threshold + discount_step + 100, 50000)
             price = (price // 10) * 10
 
+        item_id = f"m{random.randint(10000000000, 99999999999)}"
         items.append(
-            {
-                "id": f"m{random.randint(10000000000, 99999999999)}",
-                "url": f"https://jp.mercari.com/item/m{random.randint(10000000000, 99999999999)}",
-                "name": title,
-                "price": price,
-                "view": view,
-                "favorite": favorite,
-                "is_stop": 0,
-            }
+            MercariItem(
+                id=item_id,
+                url=f"https://jp.mercari.com/item/{item_id}",
+                name=title,
+                price=price,
+                view=view,
+                favorite=favorite,
+                is_stop=0,
+            )
         )
 
     return items
@@ -135,7 +148,7 @@ def execute(item_count: int = 20) -> int:
     from my_lib.notify.slack import SlackEmptyConfig
     from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
-    import mercari_bot.cli as app
+    import mercari_bot.cli
     from mercari_bot.config import (
         AppConfig,
         DataConfig,
@@ -168,7 +181,10 @@ def execute(item_count: int = 20) -> int:
             )
         ],
         slack=SlackEmptyConfig(),
-        data=DataConfig(selenium="/tmp/demo-selenium", dump="/tmp/demo-dump"),
+        data=DataConfig(
+            selenium=pathlib.Path(tempfile.gettempdir()) / "demo-selenium",
+            dump=pathlib.Path(tempfile.gettempdir()) / "demo-dump",
+        ),
         mail=unittest.mock.MagicMock(),
     )
 
@@ -176,7 +192,7 @@ def execute(item_count: int = 20) -> int:
     mock_driver = _create_mock_driver()
 
     # 価格追跡用の状態
-    price_state: dict[str, int] = {"current": 10000, "new": 10000, "updated": False}
+    price_state: _PriceState = {"current": 10000, "new": 10000, "updated": False}
 
     # 価格入力フィールドの値を動的に設定
     def get_price_attribute(name: str) -> str | None:
@@ -237,11 +253,11 @@ def execute(item_count: int = 20) -> int:
                 "[%d/%d] %s [%s] [%s円] [%s view] [%s favorite] を処理します。",
                 index,
                 item_count,
-                item["name"],
-                item["id"],
-                f"{item['price']:,}",
-                f"{item['view']:,}",
-                f"{item['favorite']:,}",
+                item.name,
+                item.id,
+                f"{item.price:,}",
+                f"{item.view:,}",
+                f"{item.favorite:,}",
             )
 
             if progress_observer is not None:
@@ -251,8 +267,8 @@ def execute(item_count: int = 20) -> int:
             _simulate_delay(1.5)
 
             # 現在の価格を記録し、状態をリセット
-            price_state["current"] = item["price"]
-            price_state["new"] = item["price"]
+            price_state["current"] = item.price
+            price_state["new"] = item.price
             price_state["updated"] = False
 
             for handler in handlers:
@@ -313,7 +329,7 @@ def execute(item_count: int = 20) -> int:
         mock_login.side_effect = mock_login_func
 
         # 実行
-        ret_code = app.execute(mock_config, notify_log=False, debug_mode=False, log_str_io=None)
+        ret_code = mercari_bot.cli.execute(mock_config, notify_log=False, debug_mode=False, log_str_io=None)
 
     return ret_code
 

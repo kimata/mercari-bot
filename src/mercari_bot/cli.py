@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import io
 import logging
-import pathlib
 import sys
 
 import docopt
@@ -54,8 +53,8 @@ def execute(
             ret_code += mercari_bot.mercari_price_down.execute(
                 config,
                 profile,
-                pathlib.Path(config.data.selenium),
-                pathlib.Path(config.data.dump),
+                config.data.selenium,
+                config.data.dump,
                 debug_mode,
                 progress=progress,
                 clear_profile_on_browser_error=clear_profile_on_browser_error,

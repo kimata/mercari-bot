@@ -13,6 +13,7 @@ import my_lib.browser_manager
 import my_lib.store.mercari.exceptions
 import pytest
 import selenium.common.exceptions
+from conftest import create_mock_item
 from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
 
 import mercari_bot.exceptions
@@ -45,8 +46,8 @@ class TestExecute:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -412,7 +413,7 @@ class TestExecuteItem:
 
     def test_execute_item_skip_stopped(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """公開停止中のアイテムはスキップ"""
-        item = {"is_stop": 1, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item(is_stop=1)
 
         # 例外が発生しないことを確認（スキップ）
         mercari_bot.mercari_price_down._execute_item(
@@ -424,7 +425,7 @@ class TestExecuteItem:
 
     def test_execute_item_skip_recent(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """最近更新されたアイテムはスキップ"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         # _get_modified_hour が小さい値を返すようモック
         mock_element = unittest.mock.MagicMock()
@@ -455,8 +456,8 @@ class TestExecuteItemWithSlackConfig:
             profile=[profile_config],
             slack=slack_config,
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -501,8 +502,8 @@ class TestBrowserStartupError:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -589,8 +590,8 @@ class TestSessionErrorWithProgress:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -679,8 +680,8 @@ class TestLoginErrorWithProgress:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -733,8 +734,8 @@ class TestItemHandler:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -746,7 +747,7 @@ class TestItemHandler:
         tmp_path: pathlib.Path,
     ):
         """iter_items_on_display から item_handler が呼び出される"""
-        item = {"is_stop": 1, "name": "テスト商品", "price": 3000, "favorite": 5}  # is_stop=1 でスキップ
+        item = create_mock_item(is_stop=1)  # is_stop=1 でスキップ
 
         def iter_items_side_effect(driver, wait, debug_mode, handlers, progress_observer=None):
             # item_handler を呼び出す
@@ -790,7 +791,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_time_sale(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """タイムセール中のアイテムはスキップ"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         # _get_modified_hour が大きい値を返す（更新から時間が経過）
         mock_element = unittest.mock.MagicMock()
@@ -811,7 +812,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_with_shipping_fee(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """送料ありの場合のテスト"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 5000, "favorite": 5}
+        item = create_mock_item(price=5000)
 
         # _get_modified_hour が大きい値を返す
         mock_modified_element = unittest.mock.MagicMock()
@@ -856,7 +857,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_price_mismatch(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """ページ遷移中に価格が変更された場合"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
@@ -885,7 +886,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_price_attribute_none(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """価格入力欄の value が None の場合"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
@@ -914,7 +915,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_no_discount(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """割引ステップが None の場合（閾値以下）"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 500, "favorite": 0}  # 閾値以下
+        item = create_mock_item(price=500, favorite=0)  # 閾値以下
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
@@ -943,7 +944,7 @@ class TestExecuteItemPriceChange:
 
     def test_execute_item_price_change_success(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """価格変更成功（debug_mode=True）"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
@@ -983,7 +984,7 @@ class TestExecuteItemPriceChange:
         self, mock_driver, mock_wait, profile_config: ProfileConfig
     ):
         """価格変更後の検証で価格が一致しない"""
-        item = {"is_stop": 0, "name": "テスト商品", "price": 3000, "favorite": 5}
+        item = create_mock_item()
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"

@@ -5,9 +5,8 @@ import logging
 import logging.handlers
 import pathlib
 import re
-import time
 import traceback
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import my_lib.browser_manager
 import my_lib.notify.slack
@@ -30,7 +29,11 @@ from mercari_bot.config import AppConfig, ProfileConfig
 _MAX_RETRY_COUNT = 1
 
 if TYPE_CHECKING:
+    from my_lib.store.mercari.config import MercariItem
     from selenium.webdriver.remote.webdriver import WebDriver
+
+# 進捗表示オブジェクトの型エイリアス
+ProgressObserver: TypeAlias = mercari_bot.progress.ProgressDisplay | mercari_bot.progress.NullProgressDisplay
 
 _WAIT_TIMEOUT_SEC = 15
 
@@ -47,12 +50,12 @@ def _get_modified_hour(driver: WebDriver) -> int:
 
 def _execute_item(
     driver: WebDriver,
-    wait: WebDriverWait,  # type: ignore[type-arg]
+    wait: WebDriverWait[Any],
     profile: ProfileConfig,
-    item: dict[str, Any],
+    item: MercariItem,
     debug_mode: bool,
 ) -> None:
-    if item["is_stop"] != 0:
+    if item.is_stop != 0:
         logging.info("公開停止中のため、スキップします。")
         return
 
@@ -79,7 +82,7 @@ def _execute_item(
     wait.until(EC.presence_of_element_located((By.XPATH, '//input[@name="price"]')))
 
     # NOTE: 梱包・発送たのメル便の場合は送料を取得
-    if len(driver.find_elements(By.XPATH, '//span[@data-testid="shipping-fee"]')) != 0:
+    if driver.find_elements(By.XPATH, '//span[@data-testid="shipping-fee"]'):
         shipping_fee = int(
             driver.find_element(
                 By.XPATH,
@@ -89,7 +92,7 @@ def _execute_item(
     else:
         shipping_fee = 0
 
-    price = item["price"] - shipping_fee
+    price = item.price - shipping_fee
 
     value_attr = driver.find_element(By.XPATH, '//input[@name="price"]').get_attribute("value")
     if value_attr is None:
@@ -98,19 +101,20 @@ def _execute_item(
     if cur_price != price:
         raise mercari_bot.exceptions.PriceChangedError(expected=price, actual=cur_price)
 
-    discount_step = mercari_bot.logic.get_discount_step(profile, price, shipping_fee, item["favorite"])
+    discount_step = mercari_bot.logic.get_discount_step(profile, price, shipping_fee, item.favorite)
     if discount_step is None:
         return
 
     new_price = price if debug_mode else mercari_bot.logic.round_price(price - discount_step)
 
-    driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(Keys.CONTROL + "a")
-    driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(Keys.BACK_SPACE)
-    driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(str(new_price))
+    price_input = driver.find_element(By.XPATH, '//input[@name="price"]')
+    price_input.send_keys(Keys.CONTROL + "a")
+    price_input.send_keys(Keys.BACK_SPACE)
+    price_input.send_keys(str(new_price))
     my_lib.selenium_util.random_sleep(2)
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "変更する")]')
 
-    time.sleep(1)
+    my_lib.selenium_util.random_sleep(1)
     # NOTE: 「出品情報の確認」ポップアップが表示される場合がある
     my_lib.selenium_util.click_xpath(
         driver, '//button[contains(text(), "このまま変更を確定する")]', is_warn=False
@@ -120,7 +124,7 @@ def _execute_item(
     my_lib.selenium_util.wait_patiently(
         driver,
         wait,
-        EC.title_contains(re.sub(" +", " ", item["name"])),
+        EC.title_contains(re.sub(" +", " ", item.name)),
     )
     my_lib.selenium_util.wait_patiently(
         driver,
@@ -129,7 +133,7 @@ def _execute_item(
     )
 
     # NOTE: 価格更新が反映されていない場合があるので、再度ページを取得する
-    time.sleep(3)
+    my_lib.selenium_util.random_sleep(3)
     driver.get(driver.current_url)
     wait.until(EC.presence_of_element_located((By.XPATH, '//div[@data-testid="price"]')))
 
@@ -146,7 +150,7 @@ def _execute_item(
             expected=new_price + shipping_fee, actual=new_total_price
         )
 
-    logging.info("価格を変更しました。(%s円 -> %s円)", f"{item['price']:,}", f"{new_total_price:,}")
+    logging.info("価格を変更しました。(%s円 -> %s円)", f"{item.price:,}", f"{new_total_price:,}")
 
 
 def execute(
@@ -155,7 +159,7 @@ def execute(
     data_path: pathlib.Path,
     dump_path: pathlib.Path,
     debug_mode: bool,
-    progress: mercari_bot.progress.ProgressDisplay | None = None,
+    progress: ProgressObserver | None = None,
     clear_profile_on_browser_error: bool = False,
 ) -> int:
     """メルカリ値下げ処理を実行する。
@@ -163,6 +167,9 @@ def execute(
     セッションエラー（ブラウザクラッシュ等）が発生した場合、
     clear_profile_on_browser_error=True であればプロファイルを削除してリトライする。
     """
+    if progress is None:
+        progress = mercari_bot.progress.NullProgressDisplay()
+
     browser_manager = my_lib.browser_manager.BrowserManager(
         profile_name=profile.name,
         data_dir=data_path,
@@ -180,8 +187,7 @@ def execute(
                     attempt + 1,
                     _MAX_RETRY_COUNT + 1,
                 )
-                if progress is not None:
-                    progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
+                progress.set_status(f"🔄 セッションエラー、リトライ中... ({profile.name})")
                 # BrowserManager を再作成（プロファイルクリアオプション付き）
                 browser_manager = my_lib.browser_manager.BrowserManager(
                     profile_name=profile.name,
@@ -192,8 +198,7 @@ def execute(
                 continue
             # リトライ回数を超えた場合
             logging.exception("セッションエラーが発生しました（リトライ不可）")
-            if progress is not None:
-                progress.set_status("❌ セッションエラー", is_error=True)
+            progress.set_status("❌ セッションエラー", is_error=True)
             my_lib.notify.slack.error(
                 config.slack,
                 "メルカリセッションエラー",
@@ -209,33 +214,30 @@ def _execute_once(
     profile: ProfileConfig,
     dump_path: pathlib.Path,
     debug_mode: bool,
-    progress: mercari_bot.progress.ProgressDisplay | None,
+    progress: ProgressObserver,
     browser_manager: my_lib.browser_manager.BrowserManager,
 ) -> int:
     """メルカリ値下げ処理の1回分の実行。"""
-    if progress is not None:
-        progress.set_status(f"🤖 ブラウザを起動中... ({profile.name})")
+    progress.set_status(f"🤖 ブラウザを起動中... ({profile.name})")
 
     try:
         driver, wait = browser_manager.get_driver()
     except Exception:
         logging.exception("ブラウザの起動に失敗しました")
-        if progress is not None:
-            progress.set_status("❌ ブラウザ起動エラー", is_error=True)
+        progress.set_status("❌ ブラウザ起動エラー", is_error=True)
         raise
 
     # NOTE: execute_item に profile を渡すためのラッパー
     def item_handler(
         driver: WebDriver,
-        wait: WebDriverWait,  # type: ignore[type-arg]
-        item: dict[str, Any],
+        wait: WebDriverWait[Any],
+        item: MercariItem,
         debug_mode: bool,
     ) -> None:
         _execute_item(driver, wait, profile, item, debug_mode)
 
     try:
-        if progress is not None:
-            progress.set_status(f"🔑 ログイン中... ({profile.name})")
+        progress.set_status(f"🔑 ログイン中... ({profile.name})")
 
         my_lib.store.mercari.login.execute(
             driver,
@@ -246,17 +248,19 @@ def _execute_once(
             dump_path,
         )
 
-        if progress is not None:
-            progress.set_status(f"📦 出品リスト取得中... ({profile.name})")
+        progress.set_status(f"📦 出品リスト取得中... ({profile.name})")
 
         my_lib.store.mercari.scrape.iter_items_on_display(
-            driver, wait, debug_mode, [item_handler], progress_observer=progress
+            driver,
+            wait,
+            debug_mode,
+            [item_handler],
+            progress_observer=progress,  # type: ignore[arg-type]
         )
 
         my_lib.selenium_util.log_memory_usage(driver)
 
-        if progress is not None:
-            progress.set_status(f"✅ 完了 ({profile.name})")
+        progress.set_status(f"✅ 完了 ({profile.name})")
 
         return 0
     except selenium.common.exceptions.InvalidSessionIdException:
@@ -265,16 +269,14 @@ def _execute_once(
         raise
     except my_lib.store.mercari.exceptions.LoginError as e:
         logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
-        if progress is not None:
-            progress.set_status("❌ ログインエラー", is_error=True)
+        progress.set_status("❌ ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリログインエラー", driver, dump_path, e
         )
         return -1
     except Exception as e:
         logging.exception("エラーが発生しました: URL: %s", driver.current_url)
-        if progress is not None:
-            progress.set_status("❌ エラー発生", is_error=True)
+        progress.set_status("❌ エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリ値下げエラー", driver, dump_path, e
         )

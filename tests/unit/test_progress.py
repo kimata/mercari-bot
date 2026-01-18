@@ -7,8 +7,11 @@ Rich による進捗表示のテストです。
 my_lib.cui_progress を使用した実装のテストを行います。
 """
 
+from conftest import create_mock_item
+
 from mercari_bot.progress import (
     _PROGRESS_ITEM,
+    NullProgressDisplay,
     ProgressDisplay,
     create_progress_display,
 )
@@ -78,27 +81,18 @@ class TestProgressDisplayObserver:
     def test_on_item_start(self):
         """on_item_start でステータス更新"""
         progress = ProgressDisplay()
-        item = {"name": "テスト商品"}
+        item = create_mock_item(name="テスト商品")
 
         progress.on_item_start(0, 10, item)
 
         assert "テスト商品" in progress._manager._status_text
         assert "🏷️" in progress._manager._status_text
 
-    def test_on_item_start_unknown_name(self):
-        """name がない場合は「不明」"""
-        progress = ProgressDisplay()
-        item = {}
-
-        progress.on_item_start(0, 10, item)
-
-        assert "不明" in progress._manager._status_text
-
     def test_on_item_complete(self):
         """on_item_complete でプログレスバーを更新"""
         progress = ProgressDisplay()
         progress.on_total_count(10)
-        progress.on_item_complete(0, 10, {"name": "test"})
+        progress.on_item_complete(0, 10, create_mock_item())
 
         task = progress._manager.get_progress_bar(_PROGRESS_ITEM)
         assert task.count == 1
@@ -154,3 +148,49 @@ class TestProgressDisplayManager:
         assert progress._manager._title == " メルカリ "
         assert progress._manager._description_width == 20
         assert progress._manager._show_remaining_time is False
+
+
+class TestNullProgressDisplay:
+    """NullProgressDisplay のテスト（Null Object Pattern）"""
+
+    def test_is_terminal_always_false(self):
+        """is_terminal は常に False"""
+        progress = NullProgressDisplay()
+        assert progress.is_terminal is False
+
+    def test_start_does_nothing(self):
+        """start は何もしない"""
+        progress = NullProgressDisplay()
+        progress.start()  # エラーなく完了
+
+    def test_stop_does_nothing(self):
+        """stop は何もしない"""
+        progress = NullProgressDisplay()
+        progress.stop()  # エラーなく完了
+
+    def test_set_status_does_nothing(self):
+        """set_status は何もしない"""
+        progress = NullProgressDisplay()
+        progress.set_status("テスト")
+        progress.set_status("エラー", is_error=True)
+        # エラーなく完了
+
+    def test_on_total_count_does_nothing(self):
+        """on_total_count は何もしない"""
+        progress = NullProgressDisplay()
+        progress.on_total_count(10)
+        # エラーなく完了
+
+    def test_on_item_start_does_nothing(self):
+        """on_item_start は何もしない"""
+        progress = NullProgressDisplay()
+        item = create_mock_item()
+        progress.on_item_start(0, 10, item)
+        # エラーなく完了
+
+    def test_on_item_complete_does_nothing(self):
+        """on_item_complete は何もしない"""
+        progress = NullProgressDisplay()
+        item = create_mock_item()
+        progress.on_item_complete(0, 10, item)
+        # エラーなく完了

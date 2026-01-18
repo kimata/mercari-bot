@@ -13,9 +13,6 @@ import re
 import mercari_bot.exceptions
 from mercari_bot.config import ProfileConfig
 
-# 後方互換性のためにエクスポート
-ModifiedTimeParseError = mercari_bot.exceptions.ModifiedTimeParseError
-
 
 def parse_modified_hour(text: str) -> int:
     """更新時間テキストを時間単位にパース
@@ -40,7 +37,7 @@ def parse_modified_hour(text: str) -> int:
     elif re.search(r"半年以上前", text):
         return 24 * 30 * 6
     else:
-        raise ModifiedTimeParseError(text)
+        raise mercari_bot.exceptions.ModifiedTimeParseError(text)
 
 
 def get_discount_step(
@@ -67,7 +64,7 @@ def get_discount_step(
                 )
                 return None
 
-    logging.info("イイねの数(%d)が条件を満たさなかったので、スキップします。", favorite_count)
+    logging.info("お気に入りの数(%d)が条件を満たさなかったので、スキップします。", favorite_count)
     return None
 
 

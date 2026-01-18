@@ -42,14 +42,14 @@ class TestGenerateMockItems:
 
         assert len(items) == 3
         for item in items:
-            assert "id" in item
-            assert "url" in item
-            assert "name" in item
-            assert "price" in item
-            assert "view" in item
-            assert "favorite" in item
-            assert "is_stop" in item
-            assert item["is_stop"] == 0
+            assert hasattr(item, "id")
+            assert hasattr(item, "url")
+            assert hasattr(item, "name")
+            assert hasattr(item, "price")
+            assert hasattr(item, "view")
+            assert hasattr(item, "favorite")
+            assert hasattr(item, "is_stop")
+            assert item.is_stop == 0
 
     def test_generate_mock_items_count_limit(self):
         """カウントがタイトル数を超える場合"""
@@ -66,8 +66,8 @@ class TestGenerateMockItems:
 
         # 全アイテムが有効な価格を持つ
         for item in items:
-            assert item["price"] >= 300  # 最低価格
-            assert item["price"] % 10 == 0  # 10円単位
+            assert item.price >= 300  # 最低価格
+            assert item.price % 10 == 0  # 10円単位
 
 
 class TestSimulateDelay:

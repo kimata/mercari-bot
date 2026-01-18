@@ -9,9 +9,12 @@ my_lib.cui_progress を使用して実装しています。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING
 
 import my_lib.cui_progress
+
+if TYPE_CHECKING:
+    from my_lib.store.mercari.config import MercariItem
 
 # プログレスバーのラベル
 _PROGRESS_ITEM = "アイテム処理"
@@ -100,16 +103,47 @@ class ProgressDisplay:
         """アイテム総数が判明したときに呼ばれる"""
         self._manager.set_progress_bar(_PROGRESS_ITEM, total=count)
 
-    def on_item_start(self, index: int, total: int, item: dict[str, Any]) -> None:
+    def on_item_start(self, index: int, total: int, item: MercariItem) -> None:
         """各アイテムの処理開始時に呼ばれる"""
-        name = item.get("name", "不明")
         max_length = self._get_max_item_name_length()
-        name = self._truncate_name(name, max_length)
+        name = self._truncate_name(item.name, max_length)
         self.set_status(f"🏷️ 処理中: {name}")
 
-    def on_item_complete(self, index: int, total: int, item: dict[str, Any]) -> None:
+    def on_item_complete(self, index: int, total: int, item: MercariItem) -> None:
         """各アイテムの処理完了時に呼ばれる"""
         self._manager.update_progress_bar(_PROGRESS_ITEM)
+
+
+@dataclass
+class NullProgressDisplay:
+    """何もしない進捗表示（Null Object Pattern）
+
+    progress_observer が不要な場合に使用し、None チェックを不要にする。
+    ProgressDisplay と同じインターフェースを持つが、すべてのメソッドが何もしない。
+    """
+
+    @property
+    def is_terminal(self) -> bool:
+        """常に False を返す"""
+        return False
+
+    def start(self) -> None:
+        """何もしない"""
+
+    def stop(self) -> None:
+        """何もしない"""
+
+    def set_status(self, _status: str, *, is_error: bool = False) -> None:
+        """何もしない"""
+
+    def on_total_count(self, _count: int) -> None:
+        """何もしない"""
+
+    def on_item_start(self, _index: int, _total: int, _item: MercariItem) -> None:
+        """何もしない"""
+
+    def on_item_complete(self, _index: int, _total: int, _item: MercariItem) -> None:
+        """何もしない"""
 
 
 def create_progress_display() -> ProgressDisplay:

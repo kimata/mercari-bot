@@ -46,10 +46,11 @@ class TestErrorWithScreenshot:
             assert call_args[0][0] == slack_config
             assert call_args[0][1] == "テストエラー"
             assert call_args[0][2] == "エラー詳細"
-            # 画像データが渡されている
-            assert "data" in call_args[0][3]
-            assert "text" in call_args[0][3]
-            assert call_args[0][3]["text"] == "エラー時のスクリーンショット"
+            # 画像データが渡されている（AttachImage dataclass）
+            attach_image = call_args[0][3]
+            assert hasattr(attach_image, "data")
+            assert hasattr(attach_image, "text")
+            assert attach_image.text == "エラー時のスクリーンショット"
 
     def test_with_empty_slack_config(self, mock_driver):
         """SlackEmptyConfig でも動作する"""
@@ -69,8 +70,8 @@ class TestErrorWithScreenshot:
                 slack_config, "タイトル", "メッセージ", mock_driver
             )
 
-            image_data = mock_error.call_args[0][3]["data"]
-            assert isinstance(image_data, PIL.Image.Image)
+            attach_image = mock_error.call_args[0][3]
+            assert isinstance(attach_image.data, PIL.Image.Image)
 
 
 class TestErrorWithTraceback:

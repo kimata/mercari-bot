@@ -9,6 +9,7 @@ Selenium に依存しない純粋ロジック関数のテストです。
 import pytest
 from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
+import mercari_bot.exceptions
 import mercari_bot.logic
 from mercari_bot.config import DiscountConfig, IntervalConfig, ProfileConfig
 
@@ -62,18 +63,18 @@ class TestParseModifiedHour:
 
     def test_invalid_format_raises_error(self):
         """無効な形式でエラー"""
-        with pytest.raises(mercari_bot.logic.ModifiedTimeParseError) as exc_info:
+        with pytest.raises(mercari_bot.exceptions.ModifiedTimeParseError) as exc_info:
             mercari_bot.logic.parse_modified_hour("不明な形式")
         assert "不明な形式" in str(exc_info.value)
 
     def test_empty_raises_error(self):
         """空文字でエラー"""
-        with pytest.raises(mercari_bot.logic.ModifiedTimeParseError):
+        with pytest.raises(mercari_bot.exceptions.ModifiedTimeParseError):
             mercari_bot.logic.parse_modified_hour("")
 
     def test_english_format_raises_error(self):
         """英語形式でエラー"""
-        with pytest.raises(mercari_bot.logic.ModifiedTimeParseError):
+        with pytest.raises(mercari_bot.exceptions.ModifiedTimeParseError):
             mercari_bot.logic.parse_modified_hour("3 hours ago")
 
 
@@ -267,11 +268,11 @@ class TestModifiedTimeParseError:
 
     def test_error_message(self):
         """エラーメッセージにテキストが含まれる"""
-        error = mercari_bot.logic.ModifiedTimeParseError("テスト文字列")
+        error = mercari_bot.exceptions.ModifiedTimeParseError("テスト文字列")
         assert "テスト文字列" in str(error)
         assert error.text == "テスト文字列"
 
     def test_error_inheritance(self):
         """Exception を継承している"""
-        error = mercari_bot.logic.ModifiedTimeParseError("test")
+        error = mercari_bot.exceptions.ModifiedTimeParseError("test")
         assert isinstance(error, Exception)

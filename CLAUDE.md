@@ -150,6 +150,47 @@ items.append("value")  # type: ignore[union-attr]
 - JSON Schema で検証（`schema/config.schema`）
 - `mercari_bot/config.py` で `dataclass` として型定義
 
+### パス設定の扱い
+
+設定ファイルで相対パスを指定する場合、`my_lib.config.resolve_path()` を使用して設定ファイルの場所を基準とした絶対パスに解決する：
+
+```python
+import my_lib.config
+
+# config.yaml の場所を基準にパスを解決
+selenium_path = my_lib.config.resolve_path(raw_config, data["selenium"])
+```
+
+DataConfig には str ではなく pathlib.Path を格納し、使用側での変換を不要にする。
+
+### my_lib との型整合性
+
+my_lib が特定の型（dataclass 等）を使用する場合、mercari-bot 側でもその型を使用する。これにより IDE の補完が効き、型安全性が向上する。
+
+```python
+# 推奨: my_lib の型を使用
+from my_lib.store.mercari.config import MercariItem
+
+def on_item_start(self, index: int, total: int, item: MercariItem) -> None:
+    name = item.name  # 属性アクセス
+
+# 非推奨: dict[str, Any] で受け取る
+def on_item_start(self, index: int, total: int, item: dict[str, Any]) -> None:
+    name = item.get("name", "不明")  # キーアクセス
+```
+
+TYPE_CHECKING ブロックで条件付きインポートすることで、実行時のインポートを避けつつ型チェックを有効にできる：
+
+```python
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from my_lib.store.mercari.config import MercariItem
+
+def process_item(item: MercariItem) -> None:
+    ...
+```
+
 ## 設定ファイル
 
 `config.example.yaml` を参考に `config.yaml` を作成：
@@ -276,3 +317,29 @@ E2E テストはデフォルトで除外（`--ignore=tests/e2e`）。
 - 設定項目の変更
 - 依存関係の追加・変更
 - アーキテクチャの変更
+
+## リファクタリング調査の観点
+
+コードをリファクタリングする際、以下の観点で改善可能性を調査する：
+
+1. **Protocol / 型エイリアス**: `| None` チェックの繰り返しがある場合、Null Object Pattern または型エイリアスの導入を検討
+2. **dict → dataclass/TypedDict**: 型情報が失われる `dict[str, Any]` は TypedDict で型安全にする
+3. **型の統一**: 外部ライブラリが提供する型（dataclass 等）がある場合、それを使用
+4. **コードの重複**: 同じ処理の繰り返しがある場合、共通化を検討
+5. **冗長なアクセス**: 同じ要素への複数回アクセスは変数にキャッシュ
+6. **後方互換性コード**: 不要になった互換性コード（再エクスポート等）は削除
+7. **マジックナンバー**: ハードコーディングされた数値は定数化を検討
+8. **my_lib 活用**: 共通ライブラリの機能を積極的に活用
+9. **テストの重複排除**: テストコード内で同じモック・フィクスチャ設定が繰り返される場合、conftest.py やテストモジュール内に共通 fixture として抽出
+10. **Null Object Pattern の活用**: 通知やプログレス表示などで「何もしない」バージョンが必要な場合、NullProgressDisplay のようにクラスを分離し、モック代わりに使用
+11. **設定オブジェクト作成の一元化**: AppConfig や DataConfig など複数テストで繰り返し使用するオブジェクトは fixture として定義
+12. **Boolean 比較のスタイル**: 空コレクションの判定には `if collection:` / `if not collection:` を使用し、`len(collection) != 0` や `len(collection) == 0` は避ける。ただし、int 型との比較（例: `is_stop != 0`）は明示的な比較が適切
+13. **標準ライブラリの適切な使用**: `random.randint(a, b)` は `int(random.random() * n)` より明確。標準ライブラリが提供する適切な関数を使用する
+14. **Selenium DOM アクセスの最適化**: 同一要素への複数回アクセスが必要な場合、最初の `find_elements()` 結果をキャッシュすることでパフォーマンスを向上できる。ただし、DOM の動的変更がある場合はキャッシュ無効化に注意
+
+ただし、以下の場合は改善を見送る：
+
+- 改善によるメリットがデメリット（複雑化、保守コスト増）を上回らない
+- 過剰設計となる場合（不要な Protocol 導入等）
+- 既存の実装で十分機能している場合
+- YAML schema 等で既に検証済みの場合（`dict[str, Any]` → TypedDict は効果薄）

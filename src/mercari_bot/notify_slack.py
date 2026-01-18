@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 import my_lib.notify.slack
 import my_lib.selenium_util
 import PIL.Image
+from my_lib.notify.slack import AttachImage
 
 if TYPE_CHECKING:
+    from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
     from selenium.webdriver.remote.webdriver import WebDriver
-
-    from mercari_bot.config import SlackConfig, SlackEmptyConfig
 
 
 def error_with_screenshot(
@@ -38,10 +38,10 @@ def error_with_screenshot(
         slack_config,
         title,
         message,
-        {
-            "data": PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
-            "text": "エラー時のスクリーンショット",
-        },
+        AttachImage(
+            data=PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
+            text="エラー時のスクリーンショット",
+        ),
     )
 
 
@@ -95,7 +95,7 @@ def dump_and_notify_error(
             )
 
     """
-    my_lib.selenium_util.dump_page(driver, int(random.random() * 100), dump_path)  # noqa: S311
+    my_lib.selenium_util.dump_page(driver, random.randint(0, 99), dump_path)  # noqa: S311
     my_lib.selenium_util.clean_dump(dump_path)
 
     # スクリーンショットを取得

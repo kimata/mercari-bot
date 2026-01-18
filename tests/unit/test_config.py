@@ -4,10 +4,13 @@
 設定パースのテスト
 """
 
+import pathlib
 import unittest.mock
 
 import pytest
-from my_lib.notify.slack import SlackEmptyConfig
+from my_lib.notify.mail import MailConfig
+from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
+from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
 from mercari_bot.config import (
     AppConfig,
@@ -86,18 +89,20 @@ class TestIntervalConfig:
 class TestDataConfig:
     """DataConfig のテスト"""
 
-    def test_parse(self):
+    def test_parse(self, tmp_path):
         """辞書からパース"""
+        raw_config = {"config_file": str(tmp_path / "config.yaml")}
         data = {"selenium": "data/selenium", "dump": "data/dump"}
-        config = _parse_data(data)
+        with unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p):
+            config = _parse_data(data, raw_config)
         assert config.selenium == "data/selenium"
         assert config.dump == "data/dump"
 
     def test_frozen(self):
         """frozen dataclass（変更不可）"""
-        config = DataConfig(selenium="/path/selenium", dump="/path/dump")
+        config = DataConfig(selenium=pathlib.Path("/path/selenium"), dump=pathlib.Path("/path/dump"))
         with pytest.raises(AttributeError):
-            config.selenium = "/new/path"  # type: ignore[misc]
+            config.selenium = pathlib.Path("/new/path")  # type: ignore[misc]
 
 
 class TestProfileConfig:
@@ -109,12 +114,10 @@ class TestProfileConfig:
         mock_line = unittest.mock.MagicMock()
 
         with (
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mercari_login", return_value=mock_mercari
+            unittest.mock.patch.object(
+                MercariLoginConfig, "parse", return_value=mock_mercari
             ) as mock_mercari_parse,
-            unittest.mock.patch(
-                "mercari_bot.config.parse_line_login", return_value=mock_line
-            ) as mock_line_parse,
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line) as mock_line_parse,
         ):
             data = {
                 "name": "Test Profile",
@@ -163,7 +166,7 @@ class TestAppConfig:
         config = AppConfig(
             profile=[],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium="/path", dump="/dump"),
+            data=DataConfig(selenium=pathlib.Path("/path"), dump=pathlib.Path("/dump")),
             mail=unittest.mock.MagicMock(),
         )
         with pytest.raises(AttributeError):
@@ -199,12 +202,14 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch.object(
+                SlackConfig,
+                "parse",
                 return_value=SlackEmptyConfig(),
             ),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p),
         ):
             config = load("config.yaml")
 
@@ -219,10 +224,6 @@ class TestLoad:
         """Slack設定ありでロード"""
         mock_mercari = unittest.mock.MagicMock()
         mock_line = unittest.mock.MagicMock()
-        mock_slack = unittest.mock.MagicMock()
-        # SlackConfig としてマークするため spec を設定
-        from my_lib.notify.slack import SlackConfig
-
         mock_slack = unittest.mock.MagicMock(spec=SlackConfig)
 
         sample_raw_config["slack"] = {
@@ -234,12 +235,14 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch.object(
+                SlackConfig,
+                "parse",
                 return_value=mock_slack,
             ),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p),
         ):
             config = load("config.yaml")
 
@@ -259,39 +262,19 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch.object(
+                SlackConfig,
+                "parse",
                 return_value=SlackEmptyConfig(),
             ),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_mail_config",
-                return_value=mock_mail,
-            ),
+            unittest.mock.patch.object(MailConfig, "parse", return_value=mock_mail),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
         ):
             config = load("config.yaml")
 
             assert config.mail == mock_mail
-
-    def test_load_invalid_slack_config_raises_error(self, sample_raw_config):
-        """不正な Slack 設定でエラー"""
-        mock_mercari = unittest.mock.MagicMock()
-        mock_line = unittest.mock.MagicMock()
-        # SlackConfig でも SlackEmptyConfig でもないオブジェクト
-        invalid_slack = "invalid"
-
-        with (
-            unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
-                return_value=invalid_slack,
-            ),
-            pytest.raises(ValueError, match="Slack 設定には info, captcha, error の全てが必要です"),
-        ):
-            load("config.yaml")
 
     def test_load_multiple_profiles(self, sample_raw_config):
         """複数プロファイルのロード"""
@@ -312,12 +295,14 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch.object(
+                SlackConfig,
+                "parse",
                 return_value=SlackEmptyConfig(),
             ),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
         ):
             config = load("config.yaml")
 
@@ -333,12 +318,14 @@ class TestLoad:
 
         with (
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config) as mock_load,
-            unittest.mock.patch("mercari_bot.config.parse_mercari_login", return_value=mock_mercari),
-            unittest.mock.patch("mercari_bot.config.parse_line_login", return_value=mock_line),
-            unittest.mock.patch(
-                "mercari_bot.config.parse_slack_config",
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch.object(
+                SlackConfig,
+                "parse",
                 return_value=SlackEmptyConfig(),
             ),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
         ):
             load("config.yaml", "schema/config.schema")
 
@@ -365,7 +352,7 @@ class TestLogConfigSummary:
                 )
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
             mail=unittest.mock.MagicMock(),
         )
 
@@ -423,7 +410,7 @@ class TestLogConfigSummary:
                 ),
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
             mail=unittest.mock.MagicMock(),
         )
 
@@ -436,7 +423,7 @@ class TestLogConfigSummary:
         assert "更新間隔: 24時間以上経過したアイテムのみ処理" in caplog.text
 
     def test_favorite_count_zero_not_last(self, caplog):
-        """favorite_count=0 が最後でない場合"""
+        """favorite_count=0 が最後でない場合（「それ以外」と表示される）"""
         import logging
 
         config = AppConfig(
@@ -453,12 +440,12 @@ class TestLogConfigSummary:
                 ),
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium="/tmp/selenium", dump="/tmp/dump"),
+            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
             mail=unittest.mock.MagicMock(),
         )
 
         with caplog.at_level(logging.INFO):
             log_config_summary(config)
 
-        # favorite_count=0 が最後でない場合は「お気に入り 0 以上」と表示
-        assert "お気に入り 0 以上: 100円値下げ (下限: 1,000円)" in caplog.text
+        # favorite_count=0 は位置に関わらず「それ以外」と表示される
+        assert "それ以外: 100円値下げ (下限: 1,000円)" in caplog.text

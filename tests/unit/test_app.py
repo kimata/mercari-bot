@@ -28,8 +28,8 @@ class TestExecute:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -70,8 +70,8 @@ class TestExecute:
             profile=[profile_config, profile_config],  # 2つのプロファイル
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -93,8 +93,8 @@ class TestExecute:
             profile=[profile_config, profile_config, profile_config],  # 3つのプロファイル
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -208,8 +208,8 @@ class TestExecute:
             app.execute(mock_config, notify_log=False, debug_mode=True, log_str_io=None)
 
             call_args = mock_execute.call_args[0]
-            assert call_args[2] == pathlib.Path(mock_config.data.selenium)
-            assert call_args[3] == pathlib.Path(mock_config.data.dump)
+            assert call_args[2] == mock_config.data.selenium
+            assert call_args[3] == mock_config.data.dump
 
 
 class TestProgressIntegration:
@@ -222,8 +222,8 @@ class TestProgressIntegration:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
             ),
             mail=unittest.mock.MagicMock(),
         )
