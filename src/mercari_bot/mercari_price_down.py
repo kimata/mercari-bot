@@ -75,6 +75,10 @@ def _execute_item(
         logging.info("タイムセール中のため、スキップします。")
         return
 
+    if my_lib.selenium_util.xpath_exists(driver, '//input[@data-testid="auction-price-option" and @checked]'):
+        logging.info("オークション形式のため、スキップします。")
+        return
+
     wait.until(EC.title_contains("商品の情報を編集"))
 
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "OK")]', is_warn=False)
