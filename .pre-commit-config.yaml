@@ -3,9 +3,7 @@ repos:
       rev: v5.0.0
       hooks:
           - id: trailing-whitespace
-            exclude: \.diff$
           - id: end-of-file-fixer
-            exclude: \.diff$
           - id: check-added-large-files
             args: [--maxkb=4096]
           - id: check-yaml
@@ -16,7 +14,6 @@ repos:
           - id: check-merge-conflict
           - id: mixed-line-ending
             args: ["--fix=lf"]
-            exclude: \.diff$
 
     - repo: local
       hooks:
@@ -45,13 +42,6 @@ repos:
           - id: pyright
             name: Run pyright
             entry: env PYRIGHT_PYTHON_FORCE_VERSION=latest uv run pyright
-            language: system
-            types: [python]
-            pass_filenames: false
-
-          - id: ty
-            name: Run ty
-            entry: uv run ty check src/
             language: system
             types: [python]
             pass_filenames: false
