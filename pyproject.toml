@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@fa5db4c94da59f2434501e8f89326890d24fb80e",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@4fd91641829a496ecf9469f9f08b575ade595b38",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -136,6 +136,7 @@ reportArgumentType = false
 reportOperatorIssue = false
 reportIndexIssue = false
 reportGeneralTypeIssues = false
+reportAttributeAccessIssue = false
 
 [tool.ty]
 # tomlkit 等の型定義が不完全なライブラリ向け
