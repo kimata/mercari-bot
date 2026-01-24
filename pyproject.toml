@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@617257a6f37bed41b9b3ad650983cb404a1ed115",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@c1c1a7dea26a950e442f3dabd53033f47dd2fd40",
     "selenium>=4.31.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.2",
@@ -21,6 +21,10 @@ dependencies = [
 
 [project.scripts]
 mercari-bot = "mercari_bot.__main__:main"
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
@@ -44,24 +48,6 @@ dev = [
     "types-requests>=2.32.4",
 ]
 
-[tool.uv]
-default-groups = ["dev"]
-
-[tool.ruff]
-line-length = 110
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]
-
-[tool.uv-dynamic-versioning]
-vcs = "git"
-style = "semver"
-format = "{base}"
-
-[build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/mercari_bot"]
 
@@ -70,6 +56,20 @@ allow-direct-references = true
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "semver"
+format = "{base}"
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
