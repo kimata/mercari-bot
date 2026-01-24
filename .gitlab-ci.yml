@@ -87,7 +87,7 @@ test-typecheck:
           paths:
               - ${UV_CACHE_DIR}
 
-test-walk-through:
+test-pytest:
     stage: test
 
     needs: []
@@ -118,7 +118,7 @@ test-smoke:
     stage: test
 
     needs:
-        - job: test-walk-through
+        - job: test-pytest
           artifacts: false
 
     before_script:
@@ -155,7 +155,7 @@ test-docker:
     needs:
         - generate-tag
         - build-image
-        - job: test-walk-through
+        - job: test-pytest
           artifacts: false
         - job: test-smoke
           artifacts: false
@@ -194,7 +194,7 @@ tag-latest:
         - generate-tag
         - job: test-typecheck
           artifacts: false
-        - job: test-walk-through
+        - job: test-pytest
           artifacts: false
 
     before_script:
