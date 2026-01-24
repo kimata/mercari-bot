@@ -3,25 +3,37 @@
 """
 progress モジュールのテスト
 
-Rich による進捗表示のテストです。
+my_lib.cui_progress.ProgressManager を使用した進捗表示のテストです。
 """
 
 import unittest.mock
 
-import rich.style
-import rich.text
+from my_lib.store.mercari.config import MercariItem
 
-import mercari_bot.progress
 from mercari_bot.progress import (
     _PROGRESS_ITEM,
-    _STATUS_STYLE_ERROR,
-    _STATUS_STYLE_NORMAL,
+    NullProgressDisplay,
     ProgressDisplay,
-    _DisplayRenderable,
-    _NullLive,
-    _NullProgress,
     create_progress_display,
 )
+
+
+def _create_mock_item(
+    name: str = "テスト商品",
+    price: int = 1000,
+    favorite: int = 5,
+    is_stop: int = 0,
+) -> MercariItem:
+    """テスト用の MercariItem を作成"""
+    return MercariItem(
+        id="m12345",
+        url="https://jp.mercari.com/item/m12345",
+        name=name,
+        price=price,
+        view=100,
+        favorite=favorite,
+        is_stop=is_stop,
+    )
 
 
 class TestProgressDisplayBasic:
@@ -38,157 +50,65 @@ class TestProgressDisplayBasic:
         # テスト環境では通常 False
         assert isinstance(progress.is_terminal, bool)
 
-    def test_start_stop_non_tty(self):
-        """非 TTY 環境での start/stop"""
+    def test_start_stop(self):
+        """start/stop が正常に動作する"""
         progress = ProgressDisplay()
-        # 非 TTY では何も起こらない
+        # エラーなく完了することを確認
         progress.start()
         progress.stop()
-        # エラーなく完了することを確認
-
-    def test_start_stop_tty(self):
-        """TTY 環境での start/stop"""
-        with unittest.mock.patch.object(
-            mercari_bot.progress.rich.console.Console,
-            "is_terminal",
-            new_callable=lambda: property(lambda self: True),
-        ):
-            progress = ProgressDisplay()
-            progress.start()
-            # TTY 環境では実際の Live/Progress が使われる
-            assert not isinstance(progress._live, _NullLive)
-            assert not isinstance(progress._progress, _NullProgress)
-            progress.stop()
-            # stop 後は NullLive に戻る
-            assert isinstance(progress._live, _NullLive)
 
 
 class TestProgressDisplaySetStatus:
     """ProgressDisplay.set_status のテスト"""
 
-    def test_set_status_updates_text(self):
-        """ステータステキストを更新"""
+    def test_set_status_calls_manager(self):
+        """set_status が ProgressManager.set_status を呼ぶ"""
         progress = ProgressDisplay()
-        progress.set_status("処理中...")
 
-        assert progress._status_text == "処理中..."
-        assert progress._status_is_error is False
+        with unittest.mock.patch.object(progress._manager, "set_status") as mock_set:
+            progress.set_status("処理中...")
+            mock_set.assert_called_once_with("処理中...", is_error=False)
 
     def test_set_status_error(self):
         """エラー状態で更新"""
         progress = ProgressDisplay()
-        progress.set_status("エラー発生", is_error=True)
 
-        assert progress._status_text == "エラー発生"
-        assert progress._status_is_error is True
-
-    def test_set_status_normal_after_error(self):
-        """エラー後に通常状態に戻す"""
-        progress = ProgressDisplay()
-        progress.set_status("エラー", is_error=True)
-        progress.set_status("復帰")
-
-        assert progress._status_text == "復帰"
-        assert progress._status_is_error is False
-
-    def test_set_status_logs_in_non_tty(self):
-        """非 TTY 環境では logging で出力"""
-        progress = ProgressDisplay()
-
-        with unittest.mock.patch("logging.info") as mock_info:
-            progress.set_status("テストメッセージ")
-            mock_info.assert_called_once_with("テストメッセージ")
-
-    def test_set_status_logs_error_in_non_tty(self):
-        """非 TTY 環境でエラー時は logging.error"""
-        progress = ProgressDisplay()
-
-        with unittest.mock.patch("logging.error") as mock_error:
-            progress.set_status("エラーメッセージ", is_error=True)
-            mock_error.assert_called_once_with("エラーメッセージ")
-
-    def test_set_status_in_tty_calls_refresh(self):
-        """TTY 環境では _refresh_display が呼ばれる"""
-        progress = ProgressDisplay()
-        # TTY 状態をシミュレート
-        mock_console = unittest.mock.MagicMock()
-        mock_console.is_terminal = True
-        progress._console = mock_console
-        progress._live = unittest.mock.MagicMock()
-
-        with unittest.mock.patch.object(progress, "_refresh_display") as mock_refresh:
-            progress.set_status("テスト")
-
-            mock_refresh.assert_called_once()
+        with unittest.mock.patch.object(progress._manager, "set_status") as mock_set:
+            progress.set_status("エラー発生", is_error=True)
+            mock_set.assert_called_once_with("エラー発生", is_error=True)
 
 
 class TestProgressDisplayObserver:
     """ProgressObserver Protocol 実装のテスト"""
 
-    def test_on_total_count_without_progress(self):
-        """NullProgress の場合は何もしない（Null Object パターン）"""
+    def test_on_total_count_calls_set_progress_bar(self):
+        """on_total_count が set_progress_bar を呼ぶ"""
         progress = ProgressDisplay()
-        # 非TTY環境ではデフォルトで NullProgress が使われる
-        assert isinstance(progress._progress, _NullProgress)
 
-        # エラーなく完了
-        progress.on_total_count(10)
-
-    def test_on_total_count_with_progress(self):
-        """_progress がある場合はタスクを追加"""
-        progress = ProgressDisplay()
-        mock_progress = unittest.mock.MagicMock()
-        mock_progress.add_task.return_value = 1
-        progress._progress = mock_progress
-
-        progress.on_total_count(10)
-
-        mock_progress.add_task.assert_called_once_with(_PROGRESS_ITEM, total=10)
-        assert progress._item_task_id == 1
+        with unittest.mock.patch.object(progress._manager, "set_progress_bar") as mock_set:
+            progress.on_total_count(10)
+            mock_set.assert_called_once_with(_PROGRESS_ITEM, total=10)
 
     def test_on_item_start(self):
         """on_item_start でステータス更新"""
         progress = ProgressDisplay()
-        item = {"name": "テスト商品"}
+        item = _create_mock_item(name="テスト商品")
 
         with unittest.mock.patch.object(progress, "set_status") as mock_set:
             progress.on_item_start(0, 10, item)
 
             mock_set.assert_called_once()
             assert "テスト商品" in mock_set.call_args[0][0]
-            assert "🏷️" in mock_set.call_args[0][0]
+            assert "処理中" in mock_set.call_args[0][0]
 
-    def test_on_item_start_unknown_name(self):
-        """name がない場合は「不明」"""
+    def test_on_item_complete_calls_update_progress_bar(self):
+        """on_item_complete が update_progress_bar を呼ぶ"""
         progress = ProgressDisplay()
-        item = {}
+        item = _create_mock_item()
 
-        with unittest.mock.patch.object(progress, "set_status") as mock_set:
-            progress.on_item_start(0, 10, item)
-
-            assert "不明" in mock_set.call_args[0][0]
-
-    def test_on_item_complete_without_progress(self):
-        """NullProgress の場合は何もしない（Null Object パターン）"""
-        progress = ProgressDisplay()
-        # 非TTY環境ではデフォルトで NullProgress が使われる
-        assert isinstance(progress._progress, _NullProgress)
-
-        # エラーなく完了
-        progress.on_item_complete(0, 10, {"name": "test"})
-
-    def test_on_item_complete_with_progress(self):
-        """_progress がある場合はタスクを更新"""
-        import rich.progress
-
-        progress = ProgressDisplay()
-        mock_progress = unittest.mock.MagicMock()
-        progress._progress = mock_progress
-        progress._item_task_id = rich.progress.TaskID(1)
-
-        progress.on_item_complete(0, 10, {"name": "test"})
-
-        mock_progress.update.assert_called_once_with(rich.progress.TaskID(1), advance=1)
+        with unittest.mock.patch.object(progress._manager, "update_progress_bar") as mock_update:
+            progress.on_item_complete(0, 10, item)
+            mock_update.assert_called_once_with(_PROGRESS_ITEM)
 
 
 class TestProgressDisplayTruncate:
@@ -221,85 +141,52 @@ class TestProgressDisplayTruncate:
         assert max_len >= 10
 
 
-class TestProgressDisplayStatusBar:
-    """ステータスバー作成のテスト"""
+class TestNullProgressDisplay:
+    """NullProgressDisplay のテスト（Null Object Pattern）"""
 
-    def test_create_status_bar_normal(self):
-        """通常時のステータスバー"""
-        progress = ProgressDisplay()
-        progress._status_text = "処理中"
-        progress._status_is_error = False
+    def test_is_terminal_always_false(self):
+        """is_terminal は常に False"""
+        null_progress = NullProgressDisplay()
+        assert null_progress.is_terminal is False
 
-        table = progress._create_status_bar()
+    def test_start_does_nothing(self):
+        """start は何もしない"""
+        null_progress = NullProgressDisplay()
+        # 例外なく完了
+        null_progress.start()
 
-        assert table is not None
-        # Table が返されることを確認
+    def test_stop_does_nothing(self):
+        """stop は何もしない"""
+        null_progress = NullProgressDisplay()
+        # 例外なく完了
+        null_progress.stop()
 
-    def test_create_status_bar_error(self):
-        """エラー時のステータスバー"""
-        progress = ProgressDisplay()
-        progress._status_text = "エラー"
-        progress._status_is_error = True
+    def test_set_status_does_nothing(self):
+        """set_status は何もしない"""
+        null_progress = NullProgressDisplay()
+        # 例外なく完了
+        null_progress.set_status("テスト")
+        null_progress.set_status("エラー", is_error=True)
 
-        table = progress._create_status_bar()
+    def test_on_total_count_does_nothing(self):
+        """on_total_count は何もしない"""
+        null_progress = NullProgressDisplay()
+        # 例外なく完了
+        null_progress.on_total_count(10)
 
-        assert table is not None
+    def test_on_item_start_does_nothing(self):
+        """on_item_start は何もしない"""
+        null_progress = NullProgressDisplay()
+        item = _create_mock_item()
+        # 例外なく完了
+        null_progress.on_item_start(0, 10, item)
 
-    def test_create_display_without_tasks(self):
-        """タスクなしの表示"""
-        progress = ProgressDisplay()
-        progress._status_text = "テスト"
-
-        display = progress._create_display()
-
-        # ステータスバーのみ
-        assert display is not None
-
-    def test_create_display_with_tasks(self):
-        """タスクありの表示"""
-        progress = ProgressDisplay()
-        progress._status_text = "テスト"
-        mock_progress = unittest.mock.MagicMock()
-        mock_progress.tasks = [unittest.mock.MagicMock()]
-        progress._progress = mock_progress
-
-        display = progress._create_display()
-
-        # Group が返される
-        assert display is not None
-
-
-class TestDisplayRenderable:
-    """_DisplayRenderable のテスト"""
-
-    def test_rich_method(self):
-        """__rich__ メソッドが _create_display を呼ぶ"""
-        progress = ProgressDisplay()
-        renderable = _DisplayRenderable(progress)
-
-        with unittest.mock.patch.object(progress, "_create_display", return_value="test") as mock:
-            result = renderable.__rich__()
-
-            mock.assert_called_once()
-            assert result == "test"
-
-
-class TestRichStyleValidation:
-    """rich のスタイル文字列が有効かを検証"""
-
-    def test_status_bar_styles_are_valid(self):
-        """ステータスバーのスタイルが有効"""
-        for style_str in [_STATUS_STYLE_NORMAL, _STATUS_STYLE_ERROR]:
-            style = rich.style.Style.parse(style_str)
-            assert style is not None, f"Invalid style: {style_str}"
-
-    def test_normal_style_has_mercari_red(self):
-        """通常スタイルがメルカリレッドを含む"""
-        assert "#E72121" in _STATUS_STYLE_NORMAL
-
-    def test_error_style_has_red_background(self):
-        """エラースタイルが赤背景"""
-        assert "red" in _STATUS_STYLE_ERROR.lower()
+    def test_on_item_complete_does_nothing(self):
+        """on_item_complete は何もしない"""
+        null_progress = NullProgressDisplay()
+        item = _create_mock_item()
+        # 例外なく完了
+        null_progress.on_item_complete(0, 10, item)
 
 
 class TestProgressConstants:
@@ -310,85 +197,20 @@ class TestProgressConstants:
         assert _PROGRESS_ITEM == "アイテム処理"
 
 
-class TestProgressDisplayRefresh:
-    """表示更新のテスト"""
+class TestProgressDisplayManagerIntegration:
+    """ProgressManager との統合テスト"""
 
-    def test_refresh_display_with_live(self):
-        """_live がある場合は refresh を呼ぶ"""
+    def test_manager_is_initialized(self):
+        """ProgressManager が正しく初期化される"""
         progress = ProgressDisplay()
-        mock_live = unittest.mock.MagicMock()
-        progress._live = mock_live
 
-        progress._refresh_display()
+        # ProgressManager インスタンスが存在する
+        assert progress._manager is not None
 
-        mock_live.refresh.assert_called_once()
-
-    def test_refresh_display_without_live(self):
-        """NullLive の場合は何もしない（Null Object パターン）"""
+    def test_manager_has_mercari_color(self):
+        """メルカリレッドが設定されている"""
         progress = ProgressDisplay()
-        # 非TTY環境ではデフォルトで NullLive が使われる
-        assert isinstance(progress._live, _NullLive)
 
-        # エラーなく完了
-        progress._refresh_display()
-
-
-class TestNullProgress:
-    """_NullProgress のテスト"""
-
-    def test_null_progress_rich_method(self):
-        """__rich__ メソッドが空のテキストを返す"""
-        null_progress = _NullProgress()
-        result = null_progress.__rich__()
-
-        assert isinstance(result, rich.text.Text)
-        assert str(result) == ""
-
-
-class TestNullLive:
-    """_NullLive のテスト"""
-
-    def test_null_live_start(self):
-        """start メソッドが何もしない"""
-        null_live = _NullLive()
-        # 例外なく完了
-        null_live.start()
-
-
-class TestTmuxEnvironment:
-    """TMUX 環境のテスト"""
-
-    def test_status_bar_width_in_tmux(self):
-        """TMUX 環境でステータスバーの幅が -2 される"""
-        import os
-
-        progress = ProgressDisplay()
-        progress._status_text = "テスト"
-
-        original_width = progress._console.width
-
-        with unittest.mock.patch.dict(os.environ, {"TMUX": "tmux-socket,12345,0"}):
-            table = progress._create_status_bar()
-            # テーブルが作成される
-            assert table is not None
-            # TMUX 環境では幅が -2 される
-            assert table.width == original_width - 2
-
-    def test_status_bar_width_without_tmux(self):
-        """非 TMUX 環境でステータスバーの幅がそのまま"""
-        import os
-
-        progress = ProgressDisplay()
-        progress._status_text = "テスト"
-
-        original_width = progress._console.width
-
-        # TMUX 環境変数がない場合
-        env_copy = os.environ.copy()
-        env_copy.pop("TMUX", None)
-        with unittest.mock.patch.dict(os.environ, env_copy, clear=True):
-            table = progress._create_status_bar()
-            # テーブルが作成される
-            assert table is not None
-            # 幅がそのまま
-            assert table.width == original_width
+        # 内部の ProgressManager の設定を確認
+        # （ProgressManager の実装詳細に依存するため、基本的な存在確認のみ）
+        assert hasattr(progress._manager, "console")

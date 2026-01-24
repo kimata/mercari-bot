@@ -113,7 +113,7 @@ directory = "reports/coverage"
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
-packages = ["mercari_bot", "app"]
+packages = ["mercari_bot"]
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = true
