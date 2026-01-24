@@ -1,6 +1,6 @@
 [project]
 name = "mercari-bot"
-version = "0.1.0"
+dynamic = ["version"]
 description = "メルカリの出品アイテムを自動的に値下げするスクリプトです．"
 authors = [
     { name = "KIMATA Tetsuya", email = "kimata@green-rabbit.net" }
@@ -11,20 +11,13 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@c1c1a7dea26a950e442f3dabd53033f47dd2fd40",
-    "selenium>=4.31.0",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@b577dfdf6e8df235fd0e58809379a171219772b8",
+    "selenium>=4.39.0",
     "pydub>=0.25.1",
-    "speechrecognition>=3.14.2",
-    "pillow>=11.2.1",
+    "speechrecognition>=3.14.5",
+    "pillow>=12.1.0",
     "undetected-chromedriver>=3.5.5",
 ]
-
-[project.scripts]
-mercari-bot = "mercari_bot.__main__:main"
-
-[build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
@@ -48,6 +41,27 @@ dev = [
     "types-requests>=2.32.4",
 ]
 
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "semver"
+format = "{base}"
+
+[tool.ty]
+[tool.ty.rules]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/mercari_bot"]
 
@@ -56,20 +70,6 @@ allow-direct-references = true
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
-
-[tool.uv]
-default-groups = ["dev"]
-
-[tool.uv-dynamic-versioning]
-vcs = "git"
-style = "semver"
-format = "{base}"
-
-[tool.ruff]
-line-length = 110
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -113,11 +113,11 @@ directory = "reports/coverage"
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
-packages = ["mercari_bot"]
+packages = ["mercari_bot", "app"]
 warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
 check_untyped_defs = true
 explicit_package_bases = true
 ignore_missing_imports = true
@@ -138,7 +138,7 @@ ignore_missing_imports = true
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.13"
+pythonVersion = "3.12"
 include = ["src", "tests"]
 reportMissingImports = false
 reportArgumentType = false
@@ -146,7 +146,3 @@ reportOperatorIssue = false
 reportIndexIssue = false
 reportGeneralTypeIssues = false
 reportAttributeAccessIssue = false
-
-[tool.ty]
-# tomlkit 等の型定義が不完全なライブラリ向け
-[tool.ty.rules]
