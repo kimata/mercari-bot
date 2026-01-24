@@ -23,6 +23,10 @@ dependencies = [
 [project.scripts]
 mercari-bot = "mercari_bot.cli:main"
 
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
@@ -45,27 +49,6 @@ dev = [
     "types-requests>=2.32.4",
 ]
 
-[tool.uv]
-default-groups = ["dev"]
-
-[tool.ruff]
-line-length = 110
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]
-
-[tool.uv-dynamic-versioning]
-vcs = "git"
-style = "semver"
-format = "{base}"
-
-[tool.ty]
-[tool.ty.rules]
-
-[build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/mercari_bot"]
 
@@ -74,6 +57,20 @@ allow-direct-references = true
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "semver"
+format = "{base}"
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -150,3 +147,6 @@ reportOperatorIssue = false
 reportIndexIssue = false
 reportGeneralTypeIssues = false
 reportAttributeAccessIssue = false
+
+[tool.ty]
+[tool.ty.rules]
