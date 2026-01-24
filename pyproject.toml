@@ -17,6 +17,7 @@ dependencies = [
     "speechrecognition>=3.14.5",
     "pillow>=12.1.0",
     "undetected-chromedriver>=3.5.5",
+    "setuptools>=80.0.0",  # undetected_chromedriver が distutils を使用するため必要
 ]
 
 [project.scripts]
