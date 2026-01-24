@@ -19,6 +19,9 @@ dependencies = [
     "undetected-chromedriver>=3.5.5",
 ]
 
+[project.scripts]
+mercari-bot = "mercari_bot.cli:main"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
