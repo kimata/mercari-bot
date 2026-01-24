@@ -9,7 +9,7 @@
 
 ## [0.1.1] - 2026-01-24
 
-### Added
+### ✨ Added
 
 - オークション形式の出品をスキップする機能を追加
 - エラー時にページソースを Slack に投稿する機能を追加
@@ -17,7 +17,7 @@
 - demo.py のユニットテストを追加
 - ty 型チェッカーを CI に追加
 
-### Changed
+### 🔄 Changed
 
 - 型安全性向上と Null Object Pattern 導入
 - BrowserManager 移行と例外階層の標準化
@@ -29,14 +29,14 @@
 - CI キャッシュキーの設計を改善
 - Python パッケージをキャッシュプロキシから取得するよう設定
 
-### Fixed
+### 🐛 Fixed
 
 - エラーログと Slack 通知を改善
 - tmux 環境での幅調整を TMUX 環境変数で判定
 - BrowserManager 導入に伴うテストのモック修正
 - ty 依存関係を追加（CI エラー修正）
 
-### Documentation
+### 📝 Documentation
 
 - CLAUDE.md に開発ワークフロー規約を追加
 
@@ -44,7 +44,7 @@
 
 初回リリース。メルカリ出品アイテムの自動値下げ機能を提供。
 
-### Added
+### ✨ Added
 
 - メルカリへの自動ログイン機能（LINE 認証対応）
 - 出品中アイテムの自動値下げ機能
@@ -65,7 +65,7 @@
 - Docker/Kubernetes 対応
 - GitLab CI/CD パイプライン
 
-### Infrastructure
+### 🏗️ Infrastructure
 
 - Ubuntu 24.04 ベースの Docker イメージ
 - Google Chrome 同梱
