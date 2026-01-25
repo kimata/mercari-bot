@@ -1241,7 +1241,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=8688ffae66fb0629415e117455e79c0c692f37fe" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=6844351c3a118b0d728acd0d7121fb5ec82f6e47" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pydub", specifier = ">=0.25.1" },
     { name = "selenium", specifier = ">=4.39.0" },
@@ -1391,8 +1391,8 @@ wheels = [
 
 [[package]]
 name = "my-lib"
-version = "0.2.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=8688ffae66fb0629415e117455e79c0c692f37fe#8688ffae66fb0629415e117455e79c0c692f37fe" }
+version = "0.2.2"
+source = { git = "https://github.com/kimata/my-py-lib?rev=6844351c3a118b0d728acd0d7121fb5ec82f6e47#6844351c3a118b0d728acd0d7121fb5ec82f6e47" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },
@@ -1404,6 +1404,7 @@ dependencies = [
     { name = "line-bot-sdk" },
     { name = "lxml" },
     { name = "psutil" },
+    { name = "pydantic" },
     { name = "pyserial" },
     { name = "pytz" },
     { name = "pyyaml" },
