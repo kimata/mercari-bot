@@ -1,9 +1,8 @@
 services:
     mercari-bot:
-        build:
-            context: .
-            dockerfile: Dockerfile
+        image: ghcr.io/kimata/mercari-bot:latest
         tty: false
         stdin_open: true
         volumes:
+            - ./config.yaml:/opt/mercari-bot/config.yaml:ro
             - ./data:/opt/mercari-bot/data

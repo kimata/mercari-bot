@@ -107,13 +107,53 @@ slack:
 
 ### Docker を使用する場合（推奨）
 
+GitHub Container Registry で公開されているビルド済みイメージと `compose.yaml` を使って実行します。
+
+#### 1. 必要なファイルの取得
+
+`compose.yaml` と設定ファイルのテンプレートを取得します。
+
+```bash
+curl -sO https://raw.githubusercontent.com/kimata/mercari-bot/master/compose.yaml
+curl -sO https://raw.githubusercontent.com/kimata/mercari-bot/master/config.example.yaml
+```
+
+#### 2. 設定ファイルの準備
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+`config.yaml` を編集し、LINE のログイン情報や値下げ条件を設定します（設定内容は [設定ファイルの準備](#2-設定ファイルの準備) を参照）。
+
+#### 3. data ディレクトリの作成
+
+Selenium のプロファイルやデバッグデータの保存先を作成します。
+
+```bash
+mkdir -p data
+```
+
+#### 4. 実行
+
 ```bash
 # 単発実行
-docker compose run --build --rm mercari-bot
+docker compose run --rm mercari-bot
 
-# デーモンとして実行
+# バックグラウンドで実行
 docker compose up -d
+
+# ログの確認
+docker compose logs -f mercari-bot
 ```
+
+`compose.yaml` は以下の 2 つをコンテナにマウントします。
+それ以外はすべてイメージ内のものが使用されます。
+
+| ホスト側 | コンテナ側 | 用途 |
+|---|---|---|
+| `./config.yaml` | `/opt/mercari-bot/config.yaml` (読み取り専用) | 設定ファイル |
+| `./data/` | `/opt/mercari-bot/data/` | Selenium プロファイル・デバッグデータ |
 
 ### Docker を使用しない場合
 
