@@ -193,6 +193,7 @@ tag-latest:
 
     needs:
         - generate-tag
+        - build-image
         - job: test-typecheck
           artifacts: false
         - job: test-pytest
