@@ -70,6 +70,8 @@ def _execute_item(
 
     my_lib.selenium_util.click_xpath(driver, '//a[@data-testid="checkout-link"]')
 
+    wait.until(EC.title_contains("商品の情報を編集"))
+
     if my_lib.selenium_util.xpath_exists(driver, '//button[contains(text(), "タイムセールを終了する")]'):
         logging.info("タイムセール中のため、スキップします。")
         return
@@ -77,8 +79,6 @@ def _execute_item(
     if my_lib.selenium_util.xpath_exists(driver, '//input[@data-testid="auction-price-option"][@checked]'):
         logging.info("オークション形式のため、スキップします。")
         return
-
-    wait.until(EC.title_contains("商品の情報を編集"))
 
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "OK")]', is_warn=False)
 
