@@ -1,6 +1,6 @@
 services:
     mercari-bot:
-        image: ghcr.io/kimata/mercari-bot:latest
+        image: ghcr.io/kimata/mercari-bot:latest@sha256:c85a9408beac9b7fe706c5df498ee02cb53e032d285bc2e16e20771021d79966
         tty: false
         stdin_open: true
         volumes:
