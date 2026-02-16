@@ -76,6 +76,9 @@ def _execute_item(
         logging.info("タイムセール中のため、スキップします。")
         return
 
+    # NOTE: ページタイトル変更後、販売形式のラジオボタンがレンダリングされるまで待機
+    wait.until(EC.presence_of_element_located((By.XPATH, '//input[@data-testid="auction-price-option"]')))
+
     if my_lib.selenium_util.xpath_exists(driver, '//input[@data-testid="auction-price-option"][@checked]'):
         logging.info("オークション形式のため、スキップします。")
         return
