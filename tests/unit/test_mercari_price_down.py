@@ -950,7 +950,7 @@ class TestExecuteItemPriceChange:
         mock_new_price_element.text = "5,000"
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if "shipping-fee" in xpath and "number" in xpath:
                 return mock_shipping_element
@@ -985,7 +985,7 @@ class TestExecuteItemPriceChange:
         mock_price_input.get_attribute.return_value = "2500"  # 価格が変更されている
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if 'name="price"' in xpath:
                 return mock_price_input
@@ -1014,7 +1014,7 @@ class TestExecuteItemPriceChange:
         mock_price_input.get_attribute.return_value = None  # value が None
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if 'name="price"' in xpath:
                 return mock_price_input
@@ -1043,7 +1043,7 @@ class TestExecuteItemPriceChange:
         mock_price_input.get_attribute.return_value = "500"
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if 'name="price"' in xpath:
                 return mock_price_input
@@ -1076,7 +1076,7 @@ class TestExecuteItemPriceChange:
         mock_new_price_element.text = "3,000"
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if 'name="price"' in xpath:
                 return mock_price_input
@@ -1116,7 +1116,7 @@ class TestExecuteItemPriceChange:
         mock_new_price_element.text = "2,500"
 
         def find_element_side_effect(by, xpath):
-            if "merShowMore" in xpath:
+            if 'color="secondary"' in xpath:
                 return mock_modified_element
             if 'name="price"' in xpath:
                 return mock_price_input

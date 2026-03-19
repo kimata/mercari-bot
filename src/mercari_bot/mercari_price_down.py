@@ -40,8 +40,7 @@ _WAIT_TIMEOUT_SEC = 15
 def _get_modified_hour(driver: WebDriver) -> int:
     modified_text = driver.find_element(
         By.XPATH,
-        '//div[@id="item-info"]//div[contains(@class,"merShowMore")]'
-        '/following-sibling::p[contains(@class, "merText")]',
+        '//div[@id="item-info"]//p[@color="secondary"]',
     ).text
 
     return mercari_bot.logic.parse_modified_hour(modified_text)
