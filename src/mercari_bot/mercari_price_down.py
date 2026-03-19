@@ -124,7 +124,7 @@ def _execute_item(
     price_input.send_keys(Keys.BACK_SPACE)
     price_input.send_keys(str(new_price))
     my_lib.selenium_util.random_sleep(2)
-    my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "変更する")]')
+    my_lib.selenium_util.click_xpath(driver, '//button[@data-testid="edit-button"]')
 
     my_lib.selenium_util.random_sleep(1)
     # NOTE: 「出品情報の確認」ポップアップが表示される場合がある
@@ -132,6 +132,13 @@ def _execute_item(
         driver, '//button[contains(text(), "このまま変更を確定する")]', is_warn=False
     )
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "このまま出品する")]', is_warn=False)
+
+    # NOTE: オークション促進などのダイアログが表示される場合は閉じる
+    my_lib.selenium_util.click_xpath(
+        driver,
+        '//div[@role="dialog"]//span[contains(text(), "閉じる")]/following-sibling::button',
+        is_warn=False,
+    )
 
     my_lib.selenium_util.wait_patiently(
         driver,
