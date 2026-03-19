@@ -37,6 +37,23 @@ ProgressObserver: TypeAlias = mercari_bot.progress.ProgressDisplay | mercari_bot
 _WAIT_TIMEOUT_SEC = 15
 
 
+def _dismiss_dialog(driver: WebDriver) -> None:
+    """ページ上に表示されているダイアログ（オークション促進等）を閉じる。
+
+    ダイアログが存在しない場合は何もせずに返る。
+    別の要素に覆われてクリックできない場合は JavaScript 経由でクリックする。
+    """
+    xpath = '//div[@role="dialog"]//span[contains(text(), "閉じる")]/following-sibling::button'
+    if not my_lib.selenium_util.xpath_exists(driver, xpath):
+        return
+
+    elem = driver.find_element(By.XPATH, xpath)
+    try:
+        elem.click()
+    except selenium.common.exceptions.ElementClickInterceptedException:
+        driver.execute_script("arguments[0].click();", elem)
+
+
 def _get_modified_hour(driver: WebDriver) -> int:
     modified_text = driver.find_element(
         By.XPATH,
@@ -58,11 +75,7 @@ def _execute_item(
         return
 
     # NOTE: 「オークションで注目を集めませんか」ポップアップが表示される場合は閉じる
-    my_lib.selenium_util.click_xpath(
-        driver,
-        '//div[@role="dialog"][.//p[contains(text(), "注目を集めませんか")]]//button',
-        is_warn=False,
-    )
+    _dismiss_dialog(driver)
 
     modified_hour = _get_modified_hour(driver)
 
@@ -134,11 +147,7 @@ def _execute_item(
     my_lib.selenium_util.click_xpath(driver, '//button[contains(text(), "このまま出品する")]', is_warn=False)
 
     # NOTE: オークション促進などのダイアログが表示される場合は閉じる
-    my_lib.selenium_util.click_xpath(
-        driver,
-        '//div[@role="dialog"]//span[contains(text(), "閉じる")]/following-sibling::button',
-        is_warn=False,
-    )
+    _dismiss_dialog(driver)
 
     my_lib.selenium_util.wait_patiently(
         driver,
