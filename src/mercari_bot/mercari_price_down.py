@@ -58,6 +58,13 @@ def _execute_item(
         logging.info("公開停止中のため、スキップします。")
         return
 
+    # NOTE: 「オークションで注目を集めませんか」ポップアップが表示される場合は閉じる
+    my_lib.selenium_util.click_xpath(
+        driver,
+        '//div[@role="dialog"][.//p[contains(text(), "注目を集めませんか")]]//button',
+        is_warn=False,
+    )
+
     modified_hour = _get_modified_hour(driver)
 
     if modified_hour < profile.interval.hour:
