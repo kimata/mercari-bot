@@ -137,6 +137,7 @@ def _execute_item(
     price_input.send_keys(Keys.BACK_SPACE)
     price_input.send_keys(str(new_price))
     my_lib.selenium_util.random_sleep(2)
+    edit_url = driver.current_url
     my_lib.selenium_util.click_xpath(driver, '//button[@data-testid="edit-button"]')
 
     my_lib.selenium_util.random_sleep(1)
@@ -149,11 +150,14 @@ def _execute_item(
     # NOTE: オークション促進などのダイアログが表示される場合は閉じる
     _dismiss_dialog(driver)
 
-    my_lib.selenium_util.wait_patiently(
-        driver,
-        wait,
-        EC.title_contains(re.sub(" +", " ", item.name)),
-    )
+    # NOTE: 変更後にページ遷移しない場合、アイテム詳細ページに直接遷移する
+    my_lib.selenium_util.random_sleep(3)
+    if "/sell/edit/" in driver.current_url:
+        logging.warning("変更後のページ遷移が発生しませんでした: %s", driver.current_url)
+        item_url = edit_url.replace("/sell/edit/", "/item/")
+        driver.get(item_url)
+
+    wait.until(EC.title_contains(re.sub(" +", " ", item.name)))
     my_lib.selenium_util.wait_patiently(
         driver,
         wait,
