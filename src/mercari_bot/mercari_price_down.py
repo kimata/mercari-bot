@@ -16,7 +16,6 @@ import my_lib.store.mercari.scrape
 import selenium.common.exceptions
 import selenium.webdriver.support.expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 
 import mercari_bot.exceptions
@@ -133,9 +132,21 @@ def _execute_item(
     new_price = price if debug_mode else mercari_bot.logic.round_price(price - discount_step)
 
     price_input = driver.find_element(By.XPATH, '//input[@name="price"]')
-    price_input.send_keys(Keys.CONTROL + "a")
-    price_input.send_keys(Keys.BACK_SPACE)
-    price_input.send_keys(str(new_price))
+    # NOTE: React の controlled input に対して値を確実に反映させるため、
+    # nativeInputValueSetter で値を設定してから input イベントを発火する
+    driver.execute_script(
+        """
+        var input = arguments[0];
+        var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value'
+        ).set;
+        nativeInputValueSetter.call(input, arguments[1]);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        """,
+        price_input,
+        str(new_price),
+    )
     my_lib.selenium_util.random_sleep(2)
     edit_url = driver.current_url
     my_lib.selenium_util.click_xpath(driver, '//button[@data-testid="edit-button"]')

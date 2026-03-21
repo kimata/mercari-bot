@@ -140,6 +140,9 @@ def _create_mock_driver() -> unittest.mock.MagicMock:
     mock_element = unittest.mock.MagicMock()
     driver.find_element.return_value = mock_element
 
+    # current_url をアイテムページとして返す（フォールバック処理をスキップ）
+    driver.current_url = "https://jp.mercari.com/item/demo"
+
     return driver
 
 
@@ -200,23 +203,27 @@ def execute(item_count: int = 20) -> int:
             return str(price_state["current"])
         return None  # pragma: no cover  # value 以外の属性は使用されない
 
-    # send_keys で価格更新を検知
-    def mock_send_keys(keys: Any) -> None:
-        # 数字が入力されたら価格更新とみなす
-        if isinstance(keys, str) and keys.isdigit():
-            price_state["new"] = int(keys)
-            price_state["updated"] = True
-            # 価格入力時のウェイト
-            _simulate_delay(0.8)
-            # 更新ボタンクリック後のページ反映を待機
-            _simulate_delay(1.5)
+    # execute_script で価格更新を検知
+    original_execute_script = mock_driver.execute_script
+
+    def mock_execute_script(script: str, *args: Any) -> Any:
+        # nativeInputValueSetter による価格設定を検知
+        if "nativeInputValueSetter" in script and len(args) >= 2:
+            new_value = args[1]
+            if isinstance(new_value, str) and new_value.isdigit():
+                price_state["new"] = int(new_value)
+                price_state["updated"] = True
+                _simulate_delay(0.8)
+                _simulate_delay(1.5)
+        return original_execute_script(script, *args)
+
+    mock_driver.execute_script = mock_execute_script
 
     # find_element が返す要素のモック
     def mock_find_element(by: Any, value: str) -> unittest.mock.MagicMock:
         element = unittest.mock.MagicMock()
         if "price" in value:
             element.get_attribute = get_price_attribute
-            element.send_keys = mock_send_keys
             # 価格表示用 - 更新後は新価格を返す
             if price_state["updated"]:
                 element.text = str(price_state["new"])
