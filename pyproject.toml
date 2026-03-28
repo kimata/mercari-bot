@@ -60,6 +60,7 @@ source = "uv-dynamic-versioning"
 
 [tool.uv]
 default-groups = ["dev"]
+exclude-newer = "1 week"
 
 [tool.uv-dynamic-versioning]
 vcs = "git"
