@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-03-22T13:38:02.560194886Z"
+exclude-newer = "2026-04-09T13:34:53.46214279Z"
 exclude-newer-span = "P1W"
 
 [[package]]
@@ -1245,7 +1245,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=1e3845cb4a7dd16806c380bed34387b23007f69d" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=df6ae643b0b8d248d42dd4012cdbe52016ec9f27" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pydub", specifier = ">=0.25.1" },
     { name = "selenium", specifier = ">=4.39.0" },
@@ -1395,8 +1395,8 @@ wheels = [
 
 [[package]]
 name = "my-lib"
-version = "0.2.2"
-source = { git = "https://github.com/kimata/my-py-lib?rev=1e3845cb4a7dd16806c380bed34387b23007f69d#1e3845cb4a7dd16806c380bed34387b23007f69d" }
+version = "0.2.0"
+source = { git = "https://github.com/kimata/my-py-lib?rev=df6ae643b0b8d248d42dd4012cdbe52016ec9f27#df6ae643b0b8d248d42dd4012cdbe52016ec9f27" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },
@@ -1410,7 +1410,6 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pyserial" },
-    { name = "python-amazon-paapi" },
     { name = "pytz" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -2086,23 +2085,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069, upload-time = "2025-07-01T13:30:59.346Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396, upload-time = "2025-07-01T13:30:56.632Z" },
-]
-
-[[package]]
-name = "python-amazon-paapi"
-version = "6.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "pydantic" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "six" },
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/05/453ba8fc8692bb5d0450acaa4d3e804544619b561871c132cff9a72a38f8/python_amazon_paapi-6.2.0.tar.gz", hash = "sha256:a21f7f94d6ec586d9ac4e61f6a60778b495c9857f7ce3aae66ba4b54041cf880", size = 230694, upload-time = "2026-03-12T21:46:19.564Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/75/ebcd24bf68005f415a3848f885859e25b8d583b8c0eac9573acf09c18664/python_amazon_paapi-6.2.0-py3-none-any.whl", hash = "sha256:b27deb173431cad353323c826f147aecd6e0054d67a54fee19421584bdcf7435", size = 425038, upload-time = "2026-03-12T21:46:18.263Z" },
 ]
 
 [[package]]
