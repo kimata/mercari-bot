@@ -8,6 +8,7 @@ import traceback
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import my_lib.browser_manager
+import my_lib.memory_util
 import my_lib.notify.slack
 import my_lib.selenium_util
 import my_lib.store.mercari.exceptions
@@ -301,7 +302,9 @@ def _execute_once(
             progress_observer=progress,  # type: ignore[arg-type]
         )
 
-        my_lib.selenium_util.log_memory_usage(driver)
+        memory_bytes = my_lib.memory_util.read_selenium_memory_bytes()
+        if memory_bytes is not None:
+            logging.info("Chrome memory (PSS): %s MB", f"{memory_bytes // (1024 * 1024):,}")
 
         progress.set_status(f"✅ 完了 ({profile.name})")
 

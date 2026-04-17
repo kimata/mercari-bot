@@ -83,7 +83,7 @@ class TestExecute:
             unittest.mock.patch("my_lib.selenium_util.clear_cache"),
             unittest.mock.patch("my_lib.store.mercari.login.execute"),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             ret = mercari_bot.mercari_price_down.execute(
@@ -111,7 +111,7 @@ class TestExecute:
             unittest.mock.patch("my_lib.selenium_util.clear_cache"),
             unittest.mock.patch("my_lib.store.mercari.login.execute"),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             mercari_bot.mercari_price_down.execute(
@@ -275,7 +275,7 @@ class TestExecute:
             unittest.mock.patch("my_lib.selenium_util.clear_cache"),
             unittest.mock.patch("my_lib.store.mercari.login.execute"),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display") as mock_iter,
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             mercari_bot.mercari_price_down.execute(
@@ -303,7 +303,7 @@ class TestExecute:
             unittest.mock.patch("my_lib.selenium_util.clear_cache"),
             unittest.mock.patch("my_lib.store.mercari.login.execute"),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display") as mock_iter,
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             mercari_bot.mercari_price_down.execute(
@@ -363,7 +363,7 @@ class TestExecute:
                 side_effect=login_side_effect,
             ),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
         ):
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
@@ -722,7 +722,7 @@ class TestSessionErrorWithProgress:
             unittest.mock.patch("my_lib.selenium_util.clear_cache"),
             unittest.mock.patch("my_lib.store.mercari.login.execute", side_effect=login_side_effect),
             unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display"),
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
             unittest.mock.patch("my_lib.chrome_util.delete_profile"),
         ):
@@ -878,7 +878,7 @@ class TestItemHandler:
                 "my_lib.store.mercari.scrape.iter_items_on_display",
                 side_effect=iter_items_side_effect,
             ),
-            unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             ret = mercari_bot.mercari_price_down.execute(

@@ -303,7 +303,7 @@ def execute(item_count: int = 20) -> int:
             "my_lib.store.mercari.scrape.iter_items_on_display",
             side_effect=tracking_mock_iter,
         ),
-        unittest.mock.patch("my_lib.selenium_util.log_memory_usage"),
+        unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
         # _execute_item 内で使用される関数のモック
         unittest.mock.patch(
             "mercari_bot.mercari_price_down._get_modified_hour",
