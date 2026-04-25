@@ -454,29 +454,28 @@ class TestGetModifiedHour:
     """_get_modified_hour のテスト"""
 
     @pytest.fixture
-    def mock_driver(self):
-        """モック WebDriver"""
-        driver = unittest.mock.MagicMock()
-        return driver
+    def mock_wait(self):
+        """モック WebDriverWait"""
+        wait = unittest.mock.MagicMock()
+        return wait
 
-    def test_get_modified_hour(self, mock_driver):
+    def test_get_modified_hour(self, mock_wait):
         """更新時間の取得"""
-        # find_element の戻り値を設定
         mock_element = unittest.mock.MagicMock()
         mock_element.text = "3時間前"
-        mock_driver.find_element.return_value = mock_element
+        mock_wait.until.return_value = mock_element
 
-        result = mercari_bot.mercari_price_down._get_modified_hour(mock_driver)
+        result = mercari_bot.mercari_price_down._get_modified_hour(mock_wait)
 
         assert result == 3
 
-    def test_get_modified_hour_days(self, mock_driver):
+    def test_get_modified_hour_days(self, mock_wait):
         """日単位の更新時間"""
         mock_element = unittest.mock.MagicMock()
         mock_element.text = "2日前"
-        mock_driver.find_element.return_value = mock_element
+        mock_wait.until.return_value = mock_element
 
-        result = mercari_bot.mercari_price_down._get_modified_hour(mock_driver)
+        result = mercari_bot.mercari_price_down._get_modified_hour(mock_wait)
 
         assert result == 48  # 2 * 24
 
@@ -515,7 +514,7 @@ class TestExecuteItem:
         # _get_modified_hour が小さい値を返すようモック
         mock_element = unittest.mock.MagicMock()
         mock_element.text = "1時間前"
-        mock_driver.find_element.return_value = mock_element
+        mock_wait.until.return_value = mock_element
 
         with unittest.mock.patch("my_lib.selenium_util.click_xpath"):
             mercari_bot.mercari_price_down._execute_item(
@@ -915,7 +914,7 @@ class TestExecuteItemPriceChange:
         # _get_modified_hour が大きい値を返す（更新から時間が経過）
         mock_element = unittest.mock.MagicMock()
         mock_element.text = "25時間前"
-        mock_driver.find_element.return_value = mock_element
+        mock_wait.until.return_value = mock_element
 
         with (
             unittest.mock.patch("my_lib.selenium_util.click_xpath"),
@@ -936,6 +935,7 @@ class TestExecuteItemPriceChange:
         # _get_modified_hour が大きい値を返す
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         # 送料要素
         mock_shipping_element = unittest.mock.MagicMock()
@@ -980,6 +980,7 @@ class TestExecuteItemPriceChange:
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         mock_price_input = unittest.mock.MagicMock()
         mock_price_input.get_attribute.return_value = "2500"  # 価格が変更されている
@@ -1009,6 +1010,7 @@ class TestExecuteItemPriceChange:
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         mock_price_input = unittest.mock.MagicMock()
         mock_price_input.get_attribute.return_value = None  # value が None
@@ -1038,6 +1040,7 @@ class TestExecuteItemPriceChange:
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         mock_price_input = unittest.mock.MagicMock()
         mock_price_input.get_attribute.return_value = "500"
@@ -1067,6 +1070,7 @@ class TestExecuteItemPriceChange:
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         mock_price_input = unittest.mock.MagicMock()
         mock_price_input.get_attribute.return_value = "3000"
@@ -1107,6 +1111,7 @@ class TestExecuteItemPriceChange:
 
         mock_modified_element = unittest.mock.MagicMock()
         mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
 
         mock_price_input = unittest.mock.MagicMock()
         mock_price_input.get_attribute.return_value = "3000"

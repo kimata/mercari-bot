@@ -54,13 +54,11 @@ def _dismiss_dialog(driver: WebDriver) -> None:
         driver.execute_script("arguments[0].click();", elem)
 
 
-def _get_modified_hour(driver: WebDriver) -> int:
-    modified_text = driver.find_element(
-        By.XPATH,
-        '//div[@id="item-info"]//p[@color="secondary"]',
-    ).text
-
-    return mercari_bot.logic.parse_modified_hour(modified_text)
+def _get_modified_hour(wait: WebDriverWait[Any]) -> int:
+    elem = wait.until(
+        EC.presence_of_element_located((By.XPATH, '//div[@id="item-info"]//p[@color="secondary"]'))
+    )
+    return mercari_bot.logic.parse_modified_hour(elem.text)
 
 
 def _execute_item(
@@ -77,7 +75,7 @@ def _execute_item(
     # NOTE: 「オークションで注目を集めませんか」ポップアップが表示される場合は閉じる
     _dismiss_dialog(driver)
 
-    modified_hour = _get_modified_hour(driver)
+    modified_hour = _get_modified_hour(wait)
 
     if modified_hour < profile.interval.hour:
         logging.info("更新してから %d 時間しか経過していないため、スキップします。", modified_hour)
