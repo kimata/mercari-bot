@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-13T15:42:17.477332342Z"
+exclude-newer = "2026-04-18T10:49:24.068691844Z"
 exclude-newer-span = "P1W"
 
 [[package]]
@@ -1245,7 +1245,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=575a1491ddef1cb9f2215dc96b98c903caa6dd19" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=9064fba42362441bc04e7aa1a5436b0d3abb138d" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pydub", specifier = ">=0.25.1" },
     { name = "selenium", specifier = ">=4.39.0" },
@@ -1396,7 +1396,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.2.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=575a1491ddef1cb9f2215dc96b98c903caa6dd19#575a1491ddef1cb9f2215dc96b98c903caa6dd19" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=9064fba42362441bc04e7aa1a5436b0d3abb138d#9064fba42362441bc04e7aa1a5436b0d3abb138d" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },

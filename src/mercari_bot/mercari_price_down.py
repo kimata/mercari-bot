@@ -167,7 +167,7 @@ def _execute_item(
         item_url = edit_url.replace("/sell/edit/", "/item/")
         driver.get(item_url)
 
-    wait.until(EC.title_contains(re.sub(" +", " ", item.name)))
+    wait.until(EC.text_to_be_present_in_element((By.XPATH, "//h1"), re.sub(" +", " ", item.name)))
     my_lib.selenium_util.wait_patiently(
         driver,
         wait,
