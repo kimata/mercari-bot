@@ -20,6 +20,8 @@ import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig, DataConfig, ProfileConfig
 
+_DUMMY_DUMP_PATH = pathlib.Path("/tmp")  # noqa: S108
+
 
 def _create_mock_item(
     name: str = "テスト商品",
@@ -501,7 +503,7 @@ class TestExecuteItem:
 
         # 例外が発生しないことを確認（スキップ）
         mercari_bot.mercari_price_down._execute_item(
-            mock_driver, mock_wait, profile_config, item, debug_mode=True
+            mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
         )
 
         # 価格変更の操作は行われない
@@ -518,7 +520,7 @@ class TestExecuteItem:
 
         with unittest.mock.patch("my_lib.selenium_util.click_xpath"):
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
         # interval.hour (20) より小さいのでスキップ
@@ -925,7 +927,7 @@ class TestExecuteItemPriceChange:
         ):
             # タイムセール中なので例外なく終了
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_with_shipping_fee(self, mock_driver, mock_wait, profile_config: ProfileConfig):
@@ -971,7 +973,7 @@ class TestExecuteItemPriceChange:
             unittest.mock.patch("time.sleep"),
         ):
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_price_mismatch(self, mock_driver, mock_wait, profile_config: ProfileConfig):
@@ -1001,7 +1003,7 @@ class TestExecuteItemPriceChange:
             pytest.raises(mercari_bot.exceptions.PriceChangedError),
         ):
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_price_attribute_none(self, mock_driver, mock_wait, profile_config: ProfileConfig):
@@ -1031,7 +1033,7 @@ class TestExecuteItemPriceChange:
             pytest.raises(mercari_bot.exceptions.PriceRetrievalError),
         ):
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_no_discount(self, mock_driver, mock_wait, profile_config: ProfileConfig):
@@ -1061,7 +1063,7 @@ class TestExecuteItemPriceChange:
         ):
             # 割引対象外なので例外なく終了
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_price_change_success(self, mock_driver, mock_wait, profile_config: ProfileConfig):
@@ -1100,7 +1102,7 @@ class TestExecuteItemPriceChange:
         ):
             # 正常終了
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
     def test_execute_item_price_verification_failed(
@@ -1141,5 +1143,5 @@ class TestExecuteItemPriceChange:
             pytest.raises(mercari_bot.exceptions.PriceVerificationError),
         ):
             mercari_bot.mercari_price_down._execute_item(
-                mock_driver, mock_wait, profile_config, item, debug_mode=True
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )

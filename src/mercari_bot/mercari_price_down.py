@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import random
 import re
 import traceback
 from typing import TYPE_CHECKING, Any, TypeAlias
@@ -67,6 +68,7 @@ def _execute_item(
     profile: ProfileConfig,
     item: MercariItem,
     debug_mode: bool,
+    dump_path: pathlib.Path,
 ) -> None:
     if item.is_stop != 0:
         logging.info("公開停止中のため、スキップします。")
@@ -164,6 +166,8 @@ def _execute_item(
     my_lib.selenium_util.random_sleep(3)
     if "/sell/edit/" in driver.current_url:
         logging.warning("変更後のページ遷移が発生しませんでした: %s", driver.current_url)
+        # NOTE: 編集ページの状態を保存して原因調査を可能にする (一時的なデバッグコード)
+        my_lib.selenium_util.dump_page(driver, random.randint(0, 99), dump_path)  # noqa: S311
         item_url = edit_url.replace("/sell/edit/", "/item/")
         driver.get(item_url)
 
@@ -276,7 +280,7 @@ def _execute_once(
         item: MercariItem,
         debug_mode: bool,
     ) -> None:
-        _execute_item(driver, wait, profile, item, debug_mode)
+        _execute_item(driver, wait, profile, item, debug_mode, dump_path)
 
     try:
         progress.set_status(f"🔑 ログイン中... ({profile.name})")
