@@ -52,15 +52,19 @@ def get_discount_step(
         favorite_count: お気に入り数
 
     Returns:
-        値下げ幅。値下げしない場合は None
+        値下げ幅。値下げ後の価格（10円単位丸め後）が下限（threshold）を
+        下回る場合など、値下げしない場合は None
     """
     for discount_info in sorted(profile.discount, key=lambda x: x.favorite_count, reverse=True):
         if favorite_count >= discount_info.favorite_count:
-            if price >= discount_info.threshold:
+            if round_price(price - discount_info.step) >= discount_info.threshold:
                 return discount_info.step
             else:
                 logging.info(
-                    "現在価格が%s円 (送料: %s円) のため、スキップします。", f"{price:,}", f"{shipping_fee:,}"
+                    "値下げすると下限 (%s円) を下回るため、スキップします。(現在価格: %s円, 送料: %s円)",
+                    f"{discount_info.threshold:,}",
+                    f"{price:,}",
+                    f"{shipping_fee:,}",
                 )
                 return None
 

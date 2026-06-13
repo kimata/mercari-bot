@@ -603,7 +603,7 @@ class TestBrowserStartupError:
         profile_config: ProfileConfig,
         tmp_path: pathlib.Path,
     ):
-        """ブラウザ起動エラー時に例外が発生する"""
+        """ブラウザ起動エラー時は Slack 通知してエラー終了する（例外は伝播しない）"""
         mock_browser_manager = unittest.mock.MagicMock()
         mock_browser_manager.get_driver.side_effect = Exception("ブラウザ起動失敗")
 
@@ -612,9 +612,9 @@ class TestBrowserStartupError:
                 "my_lib.browser_manager.BrowserManager",
                 return_value=mock_browser_manager,
             ),
-            pytest.raises(Exception, match="ブラウザ起動失敗"),
+            unittest.mock.patch("my_lib.notify.slack.error") as mock_notify,
         ):
-            mercari_bot.mercari_price_down.execute(
+            ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
                 tmp_path / "selenium",
@@ -622,6 +622,10 @@ class TestBrowserStartupError:
                 debug_mode=True,
                 clear_profile_on_browser_error=True,
             )
+
+            assert ret == -1
+            mock_notify.assert_called_once()
+            assert "ブラウザ起動" in mock_notify.call_args[0][1]
 
     def test_browser_startup_error_without_profile_delete(
         self,
@@ -637,16 +641,16 @@ class TestBrowserStartupError:
             ),
             unittest.mock.patch("my_lib.chrome_util.delete_profile") as mock_delete,
         ):
-            with pytest.raises(Exception, match="ブラウザ起動失敗"):
-                mercari_bot.mercari_price_down.execute(
-                    mock_config,
-                    profile_config,
-                    tmp_path / "selenium",
-                    tmp_path / "dump",
-                    debug_mode=True,
-                    clear_profile_on_browser_error=False,
-                )
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                clear_profile_on_browser_error=False,
+            )
 
+            assert ret == -1
             # プロファイル削除は呼ばれない
             mock_delete.assert_not_called()
 
@@ -666,17 +670,17 @@ class TestBrowserStartupError:
             ),
             unittest.mock.patch("my_lib.chrome_util.delete_profile"),
         ):
-            with pytest.raises(Exception, match="ブラウザ起動失敗"):
-                mercari_bot.mercari_price_down.execute(
-                    mock_config,
-                    profile_config,
-                    tmp_path / "selenium",
-                    tmp_path / "dump",
-                    debug_mode=True,
-                    progress=mock_progress,
-                    clear_profile_on_browser_error=True,
-                )
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+                progress=mock_progress,
+                clear_profile_on_browser_error=True,
+            )
 
+            assert ret == -1
             # エラーステータスが設定される
             error_calls = [call for call in mock_progress.set_status.call_args_list if "エラー" in call[0][0]]
             assert len(error_calls) > 0
@@ -866,7 +870,9 @@ class TestItemHandler:
         mock_driver = unittest.mock.MagicMock()
         item = _create_mock_item(is_stop=1)  # is_stop=1 でスキップ
 
-        def iter_items_side_effect(driver, wait, debug_mode, handlers, progress_observer=None):
+        def iter_items_side_effect(
+            driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
+        ):
             # item_handler を呼び出す
             for handler in handlers:
                 handler(driver, wait, item, debug_mode)
@@ -892,6 +898,78 @@ class TestItemHandler:
 
             # 正常終了（item_handler は呼ばれるが、is_stop=1 なのでスキップ）
             assert ret == 0
+
+    def test_price_verification_error_notifies_and_fails(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """価格検証エラーは Slack 通知され、プロファイルの結果が失敗になる（BUG-8 回帰テスト）"""
+        mock_driver = unittest.mock.MagicMock()
+        item = _create_mock_item()
+
+        def iter_items_side_effect(
+            driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
+        ):
+            for handler in handlers:
+                handler(driver, wait, item, debug_mode)
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.scrape.iter_items_on_display",
+                side_effect=iter_items_side_effect,
+            ),
+            unittest.mock.patch(
+                "mercari_bot.mercari_price_down._execute_item",
+                side_effect=mercari_bot.exceptions.PriceVerificationError(expected=2900, actual=3000),
+            ),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("mercari_bot.notify_slack.dump_and_notify_error") as mock_notify,
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+            )
+
+            assert ret == -1
+            mock_notify.assert_called_once()
+            assert "価格検証" in mock_notify.call_args[0][1]
+
+    def test_max_consecutive_failures_is_passed(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """iter_items_on_display に max_consecutive_failures が渡される（BUG-6 回帰テスト）"""
+        mock_driver = unittest.mock.MagicMock()
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch("my_lib.store.mercari.scrape.iter_items_on_display") as mock_iter,
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+        ):
+            mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                tmp_path / "selenium",
+                tmp_path / "dump",
+                debug_mode=True,
+            )
+
+            call_kwargs = mock_iter.call_args[1]
+            assert call_kwargs["max_consecutive_failures"] == 2
 
 
 class TestExecuteItemPriceChange:

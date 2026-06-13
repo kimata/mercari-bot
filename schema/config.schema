@@ -75,6 +75,21 @@
                 ]
             }
         },
+        "data": {
+            "type": "object",
+            "properties": {
+                "selenium": {
+                    "type": "string"
+                },
+                "dump": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "dump",
+                "selenium"
+            ]
+        },
         "slack": {
             "type": "object",
             "properties": {
@@ -164,6 +179,7 @@
         }
     },
     "required": [
+        "data",
         "profile"
     ]
 }

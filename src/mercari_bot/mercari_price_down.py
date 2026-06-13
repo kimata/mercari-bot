@@ -37,6 +37,18 @@ ProgressObserver: TypeAlias = mercari_bot.progress.ProgressDisplay | mercari_bot
 
 _WAIT_TIMEOUT_SEC = 15
 
+# NOTE: アイテム単位の処理がこの回数連続で失敗したら中断する。
+# 連続失敗はサイト構造の変化（スクレイピング不能）を示唆するため。
+_MAX_CONSECUTIVE_ITEM_FAILURES = 2
+
+
+def _get_current_url_safely(driver: WebDriver) -> str:
+    """current_url を取得する。ブラウザが死んでいる場合でも例外を出さない。"""
+    try:
+        return driver.current_url
+    except selenium.common.exceptions.WebDriverException:
+        return "(取得失敗)"
+
 
 def _dismiss_dialog(driver: WebDriver) -> None:
     """ページ上に表示されているダイアログ（オークション促進等）を閉じる。
@@ -269,9 +281,18 @@ def _execute_once(
     try:
         driver, wait = browser_manager.get_driver()
     except Exception:
+        # NOTE: 例外を伝播させると Slack 通知も後続プロファイルの処理も行われないため、
+        # ここで通知してエラー終了扱いにする。
         logging.exception("ブラウザの起動に失敗しました")
         progress.set_status("❌ ブラウザ起動エラー", is_error=True)
-        raise
+        my_lib.notify.slack.error(
+            config.slack,
+            "メルカリブラウザ起動エラー",
+            traceback.format_exc(),
+        )
+        return -1
+
+    price_verification_failed = False
 
     # NOTE: execute_item に profile を渡すためのラッパー
     def item_handler(
@@ -280,7 +301,18 @@ def _execute_once(
         item: MercariItem,
         debug_mode: bool,
     ) -> None:
-        _execute_item(driver, wait, profile, item, debug_mode, dump_path)
+        nonlocal price_verification_failed
+        try:
+            _execute_item(driver, wait, profile, item, debug_mode, dump_path)
+        except mercari_bot.exceptions.PriceVerificationError as e:
+            # NOTE: 検証失敗を再試行させると、直前の送信で商品の更新時間がリセット
+            # されているため interval 判定でスキップされ、正常終了に化けてしまう。
+            # ここで通知してアイテムを終了扱いにし、プロファイルの結果を失敗にする。
+            price_verification_failed = True
+            logging.exception("価格検証に失敗しました: %s", item.name)
+            mercari_bot.notify_slack.dump_and_notify_error(
+                config.slack, "メルカリ価格検証エラー", driver, dump_path, e
+            )
 
     try:
         progress.set_status(f"🔑 ログイン中... ({profile.name})")
@@ -302,11 +334,16 @@ def _execute_once(
             debug_mode,
             [item_handler],
             progress_observer=progress,  # type: ignore[arg-type]
+            max_consecutive_failures=_MAX_CONSECUTIVE_ITEM_FAILURES,
         )
 
         memory_bytes = my_lib.memory_util.read_selenium_memory_bytes()
         if memory_bytes is not None:
             logging.info("Chrome memory (PSS): %s MB", f"{memory_bytes // (1024 * 1024):,}")
+
+        if price_verification_failed:
+            progress.set_status(f"⚠️ 完了（価格検証エラーあり） ({profile.name})", is_error=True)
+            return -1
 
         progress.set_status(f"✅ 完了 ({profile.name})")
 
@@ -316,14 +353,14 @@ def _execute_once(
         logging.warning("セッションエラーが発生しました（ブラウザがクラッシュした可能性があります）")
         raise
     except my_lib.store.mercari.exceptions.LoginError as e:
-        logging.exception("ログインに失敗しました: URL: %s", driver.current_url)
+        logging.exception("ログインに失敗しました: URL: %s", _get_current_url_safely(driver))
         progress.set_status("❌ ログインエラー", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリログインエラー", driver, dump_path, e
         )
         return -1
     except Exception as e:
-        logging.exception("エラーが発生しました: URL: %s", driver.current_url)
+        logging.exception("エラーが発生しました: URL: %s", _get_current_url_safely(driver))
         progress.set_status("❌ エラー発生", is_error=True)
         mercari_bot.notify_slack.dump_and_notify_error(
             config.slack, "メルカリ値下げエラー", driver, dump_path, e

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import pathlib
 import random
 import traceback
@@ -95,8 +96,12 @@ def dump_and_notify_error(
             )
 
     """
-    my_lib.selenium_util.dump_page(driver, random.randint(0, 99), dump_path)  # noqa: S311
-    my_lib.selenium_util.clean_dump(dump_path)
+    # NOTE: ブラウザが死んでいてもエラー通知自体は行えるよう、ダンプ失敗は握りつぶす
+    try:
+        my_lib.selenium_util.dump_page(driver, random.randint(0, 99), dump_path)  # noqa: S311
+        my_lib.selenium_util.clean_dump(dump_path)
+    except Exception:
+        logging.exception("ページダンプの保存に失敗しました")
 
     # スクリーンショットを取得
     try:

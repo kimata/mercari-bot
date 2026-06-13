@@ -67,18 +67,24 @@ cp config.example.yaml config.yaml
 ```yaml
 profile:
     - name: Profile 1
+      user: メルカリのユーザ ID（メールアドレス）
+      pass: メルカリのログインパスワード
       line:
           user: LINE のユーザ ID
           pass: LINE のログインパスワード
       discount:
           - favorite_count: 10 # お気に入り数10以上の場合
             step: 200 # 値下げ幅（円）
-            threshold: 3000 # 最低価格（これ以下には値下げしない）
+            threshold: 3000 # 最低価格（値下げ後にこれを下回る場合は値下げしない）
           - favorite_count: 0 # デフォルト設定
             step: 100
             threshold: 3000
       interval:
           hour: 20 # この時間内に更新済みならスキップ
+
+data:
+    selenium: ./data # Chrome プロファイル等の保存先
+    dump: ./data/debug # エラー時のスクリーンショット等の保存先
 ```
 
 ### 3. 通知設定（オプション）
@@ -150,10 +156,10 @@ docker compose logs -f mercari-bot
 `compose.yaml` は以下の 2 つをコンテナにマウントします。
 それ以外はすべてイメージ内のものが使用されます。
 
-| ホスト側 | コンテナ側 | 用途 |
-|---|---|---|
-| `./config.yaml` | `/opt/mercari-bot/config.yaml` (読み取り専用) | 設定ファイル |
-| `./data/` | `/opt/mercari-bot/data/` | Selenium プロファイル・デバッグデータ |
+| ホスト側        | コンテナ側                                    | 用途                                  |
+| --------------- | --------------------------------------------- | ------------------------------------- |
+| `./config.yaml` | `/opt/mercari-bot/config.yaml` (読み取り専用) | 設定ファイル                          |
+| `./data/`       | `/opt/mercari-bot/data/`                      | Selenium プロファイル・デバッグデータ |
 
 ### Docker を使用しない場合
 

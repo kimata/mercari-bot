@@ -311,6 +311,32 @@ class TestLoad:
             assert config.profile[1].name == "Profile 2"
             assert config.profile[1].interval.hour == 12
 
+    def test_load_without_slack_key(self, sample_raw_config):
+        """slack キー自体が存在しない設定でもロードできる（BUG-3 回帰テスト）"""
+        del sample_raw_config["slack"]
+        mock_mercari = unittest.mock.MagicMock()
+        mock_line = unittest.mock.MagicMock()
+
+        with (
+            unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
+        ):
+            config = load("config.yaml")
+
+            assert isinstance(config.slack, SlackEmptyConfig)
+
+    def test_load_example_config(self):
+        """config.example.yaml がスキーマ検証込みでロードできる（BUG-1/2 回帰テスト）"""
+        root = pathlib.Path(__file__).parents[2]
+
+        config = load(str(root / "config.example.yaml"), str(root / "schema" / "config.schema"))
+
+        assert isinstance(config.slack, SlackEmptyConfig)
+        assert config.data.selenium.is_absolute()
+        assert config.data.dump.is_absolute()
+
     def test_load_with_schema(self, sample_raw_config):
         """スキーマ指定でロード"""
         mock_mercari = unittest.mock.MagicMock()

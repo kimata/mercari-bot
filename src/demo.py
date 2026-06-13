@@ -243,6 +243,7 @@ def execute(item_count: int = 20) -> int:
         debug_mode: bool,
         handlers: list[Callable[..., None]],
         progress_observer: Any = None,
+        max_consecutive_failures: int | None = None,
     ) -> None:
         item_count = len(items)
 

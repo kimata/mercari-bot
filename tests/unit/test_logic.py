@@ -131,15 +131,35 @@ class TestGetDiscountStep:
         )
         assert result is None
 
-    def test_price_at_threshold(self, profile_config: ProfileConfig):
-        """価格が閾値ちょうど"""
+    def test_price_at_threshold_returns_none(self, profile_config: ProfileConfig):
+        """価格が閾値ちょうどの場合、値下げすると下限を下回るため None"""
         result = mercari_bot.logic.get_discount_step(
             profile_config,
-            price=3000,  # threshold=3000
+            price=3000,  # threshold=3000, step=200 → 値下げ後 2800 < 3000
+            shipping_fee=0,
+            favorite_count=10,
+        )
+        assert result is None
+
+    def test_discount_landing_exactly_at_threshold(self, profile_config: ProfileConfig):
+        """値下げ後の価格が閾値ちょうどになる場合は値下げする"""
+        result = mercari_bot.logic.get_discount_step(
+            profile_config,
+            price=3200,  # threshold=3000, step=200 → 値下げ後 3000 == 3000
             shipping_fee=0,
             favorite_count=10,
         )
         assert result == 200
+
+    def test_discount_would_fall_below_threshold_returns_none(self, profile_config: ProfileConfig):
+        """値下げ後の価格（丸め後）が閾値を下回る場合は None"""
+        result = mercari_bot.logic.get_discount_step(
+            profile_config,
+            price=3190,  # threshold=3000, step=200 → 値下げ後 round(2990)=2990 < 3000
+            shipping_fee=0,
+            favorite_count=10,
+        )
+        assert result is None
 
     def test_single_discount_above_threshold(self, profile_single_discount: ProfileConfig):
         """単一設定で閾値以上"""
@@ -165,7 +185,7 @@ class TestGetDiscountStep:
         """送料がある場合（price は送料抜き）"""
         result = mercari_bot.logic.get_discount_step(
             profile_config,
-            price=3000,
+            price=4000,
             shipping_fee=500,
             favorite_count=10,
         )

@@ -1,5 +1,8 @@
 profile:
     - name: Profile 1
+      user: メルカリのユーザ ID（メールアドレス）
+      pass: メルカリのログインパスワード
+
       line:
           user: LINE のユーザ ID
           pass: LINE のログインパスワード
@@ -14,6 +17,10 @@ profile:
 
       interval:
           hour: 20 # 更新時間がこの時間より短い場合，スキップ
+
+data:
+    selenium: ./data # Chrome プロファイル等の保存先
+    dump: ./data/debug # エラー時のスクリーンショット等の保存先
 
 
 # 動作ログをメールで送信する場合，以下を設定

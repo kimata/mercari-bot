@@ -98,7 +98,7 @@ def load(config_path: str, schema_path: str | None = None) -> AppConfig:
     """設定ファイルを読み込んで AppConfig を返す"""
     raw_config = my_lib.config.load(config_path, schema_path)
 
-    slack_config = SlackConfig.parse(raw_config["slack"])
+    slack_config = SlackConfig.parse(raw_config.get("slack", {}))
     if not isinstance(slack_config, SlackConfig | SlackEmptyConfig):
         msg = "Slack 設定には info, captcha, error の全てが必要です（または全て省略）"
         raise ValueError(msg)
