@@ -9,15 +9,28 @@ my_lib.cui_progress を使用して実装しています。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import my_lib.cui_progress
+import my_lib.store.mercari.progress
+import rich.cells
 
 if TYPE_CHECKING:
     from my_lib.store.mercari.config import MercariItem
 
 # プログレスバーのラベル
 _PROGRESS_ITEM = "アイテム処理"
+
+
+@runtime_checkable
+class StatusProgressObserver(my_lib.store.mercari.progress.ProgressObserver, Protocol):
+    """my_lib の ProgressObserver に加えて、ステータス表示を受け取れる observer"""
+
+    def start(self) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def set_status(self, status: str, is_error: bool = False) -> None: ...
 
 
 @dataclass
@@ -79,7 +92,7 @@ class ProgressDisplay:
         self._manager.set_status(status, is_error=is_error)
 
     def _get_max_item_name_length(self) -> int:
-        """ステータスバーに表示可能な商品名の最大長を計算する"""
+        """ステータスバーに表示可能な商品名の最大表示幅（セル数）を計算する"""
         # ターミナル幅を取得
         terminal_width = self._manager.console.width
 
@@ -87,16 +100,20 @@ class ProgressDisplay:
         # 中央（ステータス）は全体の 3/5
         status_width = (terminal_width * 3) // 5
 
-        # プレフィックス「🏷️ 処理中: 」の分を引く（絵文字は2文字分として計算）
-        prefix_length = len("🏷️ 処理中: ") + 1  # 絵文字の表示幅補正
+        # プレフィックス「🏷️ 処理中: 」の分を引く
+        prefix_length = rich.cells.cell_len("🏷️ 処理中: ")
 
         return max(status_width - prefix_length, 10)
 
-    def _truncate_name(self, name: str, max_length: int) -> str:
-        """商品名を指定した長さに省略する"""
-        if len(name) <= max_length:
+    def _truncate_name(self, name: str, max_width: int) -> str:
+        """商品名を指定した表示幅（セル数）に省略する
+
+        全角文字は 2 セルとして数えるため、日本語の商品名でも
+        ステータスバーからはみ出さない。
+        """
+        if rich.cells.cell_len(name) <= max_width:
             return name
-        return name[: max_length - 3] + "..."
+        return rich.cells.set_cell_size(name, max_width - 3).rstrip() + "..."
 
     # --- ProgressObserver Protocol の実装 ---
     def on_total_count(self, count: int) -> None:
@@ -133,17 +150,41 @@ class NullProgressDisplay:
     def stop(self) -> None:
         """何もしない"""
 
-    def set_status(self, _status: str, *, is_error: bool = False) -> None:
+    def set_status(self, status: str, is_error: bool = False) -> None:
         """何もしない"""
 
-    def on_total_count(self, _count: int) -> None:
+    def on_total_count(self, count: int) -> None:
         """何もしない"""
 
-    def on_item_start(self, _index: int, _total: int, _item: MercariItem) -> None:
+    def on_item_start(self, index: int, total: int, item: MercariItem) -> None:
         """何もしない"""
 
-    def on_item_complete(self, _index: int, _total: int, _item: MercariItem) -> None:
+    def on_item_complete(self, index: int, total: int, item: MercariItem) -> None:
         """何もしない"""
+
+
+@dataclass
+class ItemRecordingObserver:
+    """内側の observer に委譲しつつ、出現した全アイテムを記録する observer
+
+    my_lib 側は公開停止中のアイテムを item_func に渡さないため、
+    出品一覧の全アイテム（売却検知のスナップショット対象）は
+    on_item_start で捕捉する。
+    """
+
+    inner: my_lib.store.mercari.progress.ProgressObserver
+    seen: dict[str, MercariItem] = field(default_factory=dict)
+
+    def on_total_count(self, count: int) -> None:
+        self.inner.on_total_count(count)
+
+    def on_item_start(self, index: int, total: int, item: MercariItem) -> None:
+        # NOTE: リトライ時に同一アイテムで複数回呼ばれるため、dict で重複排除する
+        self.seen[item.id] = item
+        self.inner.on_item_start(index, total, item)
+
+    def on_item_complete(self, index: int, total: int, item: MercariItem) -> None:
+        self.inner.on_item_complete(index, total, item)
 
 
 def create_progress_display() -> ProgressDisplay:

@@ -85,6 +85,7 @@ profile:
 data:
     selenium: ./data # Chrome プロファイル等の保存先
     dump: ./data/debug # エラー時のスクリーンショット等の保存先
+    # history: ./data/history.db # 値下げ履歴 DB（省略時は selenium 配下の history.db）
 ```
 
 ### 3. 通知設定（オプション）
@@ -171,30 +172,20 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 依存関係のインストールと実行
 uv sync
-uv run python src/app.py
-```
-
-#### pip を使用（代替）
-
-```bash
-# 依存関係のインストール
-pip install -r requirements.txt
-
-# 実行
-python src/app.py
+uv run mercari-bot
 ```
 
 ### コマンドラインオプション
 
 ```bash
 # デバッグモード（実際に値下げせず確認のみ）
-uv run python src/app.py -D
+uv run mercari-bot -D
 
 # 設定ファイルを指定
-uv run python src/app.py -c custom-config.yaml
+uv run mercari-bot -c custom-config.yaml
 
 # ログ通知を有効化
-uv run python src/app.py -l
+uv run mercari-bot -l
 ```
 
 ## ☸️ Kubernetes デプロイ
@@ -209,7 +200,7 @@ vim kubernetes/mercari-bot.yaml
 kubectl apply -f kubernetes/mercari-bot.yaml
 ```
 
-デフォルトでは1日2回（9:00と21:00）実行されます。
+デフォルトでは1日2回（7:00と18:00）実行されます。
 
 ## 🔧 高度な設定
 
@@ -241,7 +232,17 @@ Seleniumのプロファイルやデバッグデータの保存先を設定：
 data:
     selenium: ./data # Chromeプロファイル等の保存先
     dump: ./data/debug # デバッグ時のスクリーンショット保存先
+    history: ./data/history.db # 値下げ履歴 DB（省略時は selenium 配下の history.db）
 ```
+
+### 値下げ履歴の記録と売却検知
+
+実行毎にアイテムの処理結果（値下げ・スキップ理由）が SQLite（`data.history`）に記録されます。
+また、前回実行時の出品一覧と比較して消えたアイテムを売却（または取り下げ）として検知し、
+値下げ履歴付きのサマリーを Slack の info チャンネルに通知します。
+
+- デバッグモード（`-D`）では記録・検知は行われません
+- Kubernetes 運用では `data/` が PVC マウントされるため履歴は自動的に永続化されます
 
 ## 🧪 開発
 
@@ -252,7 +253,7 @@ data:
 uv run pytest
 
 # 特定のテストファイル
-uv run pytest tests/test_mercari.py
+uv run pytest tests/unit/test_mercari_price_down.py
 
 # カバレッジレポート付き
 uv run pytest --cov=src --cov-report=html
@@ -261,11 +262,12 @@ uv run pytest --cov=src --cov-report=html
 ### コード品質チェック
 
 ```bash
-# フォーマット
-uv run black src/
+# リント・フォーマット
+uv run ruff check src/
 
-# リント
-uv run flake8 src/
+# 型チェック
+uv run mypy src/
+uv run pyright src/
 ```
 
 ## 📊 CI/CD

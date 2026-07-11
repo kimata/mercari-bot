@@ -37,7 +37,16 @@ class PriceChangedError(PriceError):
         super().__init__(f"ページ遷移中に価格が変更されました (期待値: {expected}, 実際: {actual})")
 
 
-class PriceVerificationError(PriceError):
+class PostSubmitError(PriceError):
+    """価格変更の送信後に発生したエラー
+
+    送信は既に成功している可能性があるため、リトライしてはいけない。
+    リトライすると更新時間がリセットされた状態で interval 判定により
+    スキップされ、検証されないまま正常終了に化けてしまう。
+    """
+
+
+class PriceVerificationError(PostSubmitError):
     """編集後の価格が意図と異なる"""
 
     def __init__(self, expected: int, actual: int) -> None:
@@ -46,3 +55,11 @@ class PriceVerificationError(PriceError):
         super().__init__(
             f"編集後の価格が意図したものと異なっています (期待値: {expected:,}円, 実際: {actual:,}円)"
         )
+
+
+class PriceVerificationTimeoutError(PostSubmitError):
+    """価格変更の送信後、結果の検証がタイムアウトした"""
+
+    def __init__(self, item_name: str) -> None:
+        self.item_name = item_name
+        super().__init__(f"価格変更の送信後、検証がタイムアウトしました: {item_name}")

@@ -19,6 +19,9 @@ from my_lib.store.mercari.config import (
     MercariLoginConfig,
 )
 
+# メルカリの最低出品価格
+_MIN_LISTING_PRICE = 300
+
 
 @dataclass(frozen=True)
 class DiscountConfig:
@@ -42,7 +45,7 @@ class ProfileConfig:
 
     name: str
     mercari: MercariLoginConfig
-    discount: list[DiscountConfig]
+    discount: list[DiscountConfig]  # favorite_count 降順にソート済み
     interval: IntervalConfig
     line: LineLoginConfig
 
@@ -53,6 +56,7 @@ class DataConfig:
 
     selenium: pathlib.Path
     dump: pathlib.Path
+    history: pathlib.Path  # 値下げ履歴 DB (SQLite)
 
 
 @dataclass(frozen=True)
@@ -77,24 +81,61 @@ def _parse_interval(data: dict[str, Any]) -> IntervalConfig:
     return IntervalConfig(hour=data["hour"])
 
 
+def _warn_profile_misconfiguration(profile: ProfileConfig) -> None:
+    """運用ミスになりやすい設定を早期に警告する"""
+    for discount in profile.discount:
+        if discount.threshold < _MIN_LISTING_PRICE:
+            logging.warning(
+                "プロファイル「%s」: threshold (%d円) がメルカリの最低出品価格 (%d円) 未満です。"
+                "値下げ後の価格が %d円 を下回ると価格変更の送信が失敗し続けます。",
+                profile.name,
+                discount.threshold,
+                _MIN_LISTING_PRICE,
+                _MIN_LISTING_PRICE,
+            )
+
+    if all(discount.favorite_count > 0 for discount in profile.discount):
+        logging.warning(
+            "プロファイル「%s」: favorite_count: 0 のデフォルト条件がありません。"
+            "お気に入り数が条件未満のアイテムはすべてスキップされます。",
+            profile.name,
+        )
+
+
 def _parse_profile(data: dict[str, Any]) -> ProfileConfig:
-    return ProfileConfig(
+    # NOTE: favorite_count 降順に評価する仕様を設定型のレベルで保証するため、
+    # ここでソートして格納する
+    discount = sorted(
+        (_parse_discount(d) for d in data["discount"]),
+        key=lambda d: d.favorite_count,
+        reverse=True,
+    )
+    profile = ProfileConfig(
         name=data["name"],
         mercari=MercariLoginConfig.parse(data),
-        discount=[_parse_discount(d) for d in data["discount"]],
+        discount=discount,
         interval=_parse_interval(data["interval"]),
         line=LineLoginConfig.parse(data["line"]),
     )
+    _warn_profile_misconfiguration(profile)
+    return profile
 
 
 def _parse_data(data: dict[str, Any], raw_config: dict[str, Any]) -> DataConfig:
+    selenium = my_lib.config.resolve_path(raw_config, data["selenium"])
     return DataConfig(
-        selenium=my_lib.config.resolve_path(raw_config, data["selenium"]),
+        selenium=selenium,
         dump=my_lib.config.resolve_path(raw_config, data["dump"]),
+        # NOTE: 省略時は selenium データディレクトリ配下（k8s では PVC マウント済み）に置く
+        history=(
+            my_lib.config.resolve_path(raw_config, data["history"])
+            if "history" in data
+            else selenium / "history.db"
+        ),
     )
 
 
-def load(config_path: str, schema_path: str | None = None) -> AppConfig:
+def load(config_path: str, schema_path: str | pathlib.Path | None = None) -> AppConfig:
     """設定ファイルを読み込んで AppConfig を返す"""
     raw_config = my_lib.config.load(config_path, schema_path)
 

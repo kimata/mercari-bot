@@ -4,6 +4,7 @@
 設定パースのテスト
 """
 
+import logging
 import pathlib
 import unittest.mock
 
@@ -90,17 +91,30 @@ class TestDataConfig:
     """DataConfig のテスト"""
 
     def test_parse(self, tmp_path):
-        """辞書からパース"""
+        """辞書からパース（history 省略時は selenium 配下にフォールバック）"""
         raw_config = {"config_file": str(tmp_path / "config.yaml")}
         data = {"selenium": "data/selenium", "dump": "data/dump"}
-        with unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p):
+        with unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)):
             config = _parse_data(data, raw_config)
-        assert config.selenium == "data/selenium"
-        assert config.dump == "data/dump"
+        assert config.selenium == pathlib.Path("data/selenium")
+        assert config.dump == pathlib.Path("data/dump")
+        assert config.history == pathlib.Path("data/selenium/history.db")
+
+    def test_parse_with_history(self, tmp_path):
+        """history 指定時はそのパスが解決される"""
+        raw_config = {"config_file": str(tmp_path / "config.yaml")}
+        data = {"selenium": "data/selenium", "dump": "data/dump", "history": "data/history.db"}
+        with unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)):
+            config = _parse_data(data, raw_config)
+        assert config.history == pathlib.Path("data/history.db")
 
     def test_frozen(self):
         """frozen dataclass（変更不可）"""
-        config = DataConfig(selenium=pathlib.Path("/path/selenium"), dump=pathlib.Path("/path/dump"))
+        config = DataConfig(
+            selenium=pathlib.Path("/path/selenium"),
+            dump=pathlib.Path("/path/dump"),
+            history=pathlib.Path("/path/selenium/history.db"),
+        )
         with pytest.raises(AttributeError):
             config.selenium = pathlib.Path("/new/path")  # type: ignore[misc]
 
@@ -143,6 +157,26 @@ class TestProfileConfig:
             mock_mercari_parse.assert_called_once_with(data)
             mock_line_parse.assert_called_once_with({"user": "test_user", "pass": "test_pass"})
 
+    def test_parse_sorts_discount(self):
+        """discount は favorite_count 降順にソートされて格納される"""
+        with (
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=unittest.mock.MagicMock()),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=unittest.mock.MagicMock()),
+        ):
+            data = {
+                "name": "Test Profile",
+                "line": {"user": "test_user", "pass": "test_pass"},
+                "discount": [
+                    {"favorite_count": 0, "step": 100, "threshold": 1000},
+                    {"favorite_count": 10, "step": 200, "threshold": 3000},
+                    {"favorite_count": 5, "step": 150, "threshold": 2000},
+                ],
+                "interval": {"hour": 20},
+            }
+            config = _parse_profile(data)
+
+            assert [d.favorite_count for d in config.discount] == [10, 5, 0]
+
     def test_frozen(self):
         """frozen dataclass（変更不可）"""
         mock_mercari = unittest.mock.MagicMock()
@@ -158,6 +192,50 @@ class TestProfileConfig:
             config.name = "New Name"  # type: ignore[misc]
 
 
+class TestProfileValidationWarning:
+    """設定ミスの警告のテスト"""
+
+    def _parse(self, discount: list[dict[str, int]]) -> ProfileConfig:
+        with (
+            unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=unittest.mock.MagicMock()),
+            unittest.mock.patch.object(LineLoginConfig, "parse", return_value=unittest.mock.MagicMock()),
+        ):
+            return _parse_profile(
+                {
+                    "name": "Test Profile",
+                    "line": {"user": "user", "pass": "pass"},
+                    "discount": discount,
+                    "interval": {"hour": 20},
+                }
+            )
+
+    def test_threshold_below_min_listing_price_warns(self, caplog: pytest.LogCaptureFixture):
+        """threshold が最低出品価格未満だと警告"""
+        with caplog.at_level(logging.WARNING):
+            self._parse([{"favorite_count": 0, "step": 100, "threshold": 200}])
+
+        assert any("最低出品価格" in record.message for record in caplog.records)
+
+    def test_missing_default_discount_warns(self, caplog: pytest.LogCaptureFixture):
+        """favorite_count: 0 のデフォルト条件がないと警告"""
+        with caplog.at_level(logging.WARNING):
+            self._parse([{"favorite_count": 10, "step": 100, "threshold": 1000}])
+
+        assert any("デフォルト条件" in record.message for record in caplog.records)
+
+    def test_valid_config_no_warning(self, caplog: pytest.LogCaptureFixture):
+        """問題のない設定では警告なし"""
+        with caplog.at_level(logging.WARNING):
+            self._parse(
+                [
+                    {"favorite_count": 10, "step": 200, "threshold": 3000},
+                    {"favorite_count": 0, "step": 100, "threshold": 1000},
+                ]
+            )
+
+        assert not caplog.records
+
+
 class TestAppConfig:
     """AppConfig のテスト"""
 
@@ -166,7 +244,11 @@ class TestAppConfig:
         config = AppConfig(
             profile=[],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium=pathlib.Path("/path"), dump=pathlib.Path("/dump")),
+            data=DataConfig(
+                selenium=pathlib.Path("/path"),
+                dump=pathlib.Path("/dump"),
+                history=pathlib.Path("/path/history.db"),
+            ),
             mail=unittest.mock.MagicMock(),
         )
         with pytest.raises(AttributeError):
@@ -209,7 +291,7 @@ class TestLoad:
                 "parse",
                 return_value=SlackEmptyConfig(),
             ),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             config = load("config.yaml")
 
@@ -217,8 +299,8 @@ class TestLoad:
             assert len(config.profile) == 1
             assert config.profile[0].name == "Profile 1"
             assert isinstance(config.slack, SlackEmptyConfig)
-            assert config.data.selenium == "data/selenium"
-            assert config.data.dump == "data/dump"
+            assert config.data.selenium == pathlib.Path("data/selenium")
+            assert config.data.dump == pathlib.Path("data/dump")
 
     def test_load_with_slack(self, sample_raw_config):
         """Slack設定ありでロード"""
@@ -242,7 +324,7 @@ class TestLoad:
                 "parse",
                 return_value=mock_slack,
             ),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             config = load("config.yaml")
 
@@ -270,7 +352,7 @@ class TestLoad:
                 return_value=SlackEmptyConfig(),
             ),
             unittest.mock.patch.object(MailConfig, "parse", return_value=mock_mail),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             config = load("config.yaml")
 
@@ -302,7 +384,7 @@ class TestLoad:
                 "parse",
                 return_value=SlackEmptyConfig(),
             ),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             config = load("config.yaml")
 
@@ -321,7 +403,7 @@ class TestLoad:
             unittest.mock.patch("my_lib.config.load", return_value=sample_raw_config),
             unittest.mock.patch.object(MercariLoginConfig, "parse", return_value=mock_mercari),
             unittest.mock.patch.object(LineLoginConfig, "parse", return_value=mock_line),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             config = load("config.yaml")
 
@@ -351,7 +433,7 @@ class TestLoad:
                 "parse",
                 return_value=SlackEmptyConfig(),
             ),
-            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: p),
+            unittest.mock.patch("my_lib.config.resolve_path", side_effect=lambda _r, p: pathlib.Path(p)),
         ):
             load("config.yaml", "schema/config.schema")
 
@@ -378,7 +460,11 @@ class TestLogConfigSummary:
                 )
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
+            data=DataConfig(
+                selenium=pathlib.Path("/tmp/selenium"),
+                dump=pathlib.Path("/tmp/dump"),
+                history=pathlib.Path("/tmp/selenium/history.db"),
+            ),
             mail=unittest.mock.MagicMock(),
         )
 
@@ -436,7 +522,11 @@ class TestLogConfigSummary:
                 ),
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
+            data=DataConfig(
+                selenium=pathlib.Path("/tmp/selenium"),
+                dump=pathlib.Path("/tmp/dump"),
+                history=pathlib.Path("/tmp/selenium/history.db"),
+            ),
             mail=unittest.mock.MagicMock(),
         )
 
@@ -466,7 +556,11 @@ class TestLogConfigSummary:
                 ),
             ],
             slack=SlackEmptyConfig(),
-            data=DataConfig(selenium=pathlib.Path("/tmp/selenium"), dump=pathlib.Path("/tmp/dump")),
+            data=DataConfig(
+                selenium=pathlib.Path("/tmp/selenium"),
+                dump=pathlib.Path("/tmp/dump"),
+                history=pathlib.Path("/tmp/selenium/history.db"),
+            ),
             mail=unittest.mock.MagicMock(),
         )
 

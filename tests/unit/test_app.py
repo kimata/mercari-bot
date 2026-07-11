@@ -30,6 +30,7 @@ class TestExecute:
             data=DataConfig(
                 selenium=tmp_path / "selenium",
                 dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -37,7 +38,7 @@ class TestExecute:
     def test_execute_success(self, mock_config: AppConfig):
         """正常実行"""
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0) as mock_execute,
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True) as mock_execute,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start") as mock_start,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop") as mock_stop,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status") as mock_status,
@@ -55,14 +56,17 @@ class TestExecute:
     def test_execute_with_error(self, mock_config: AppConfig):
         """エラー時の戻り値"""
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=-1),
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=False),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
-            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status") as mock_status,
         ):
             ret = app.execute(mock_config, notify_log=False, debug_mode=True, log_str_io=None)
 
-            assert ret == -1
+            assert ret == 1
+            # エラー時は完了メッセージではなくエラーメッセージが表示される
+            last_status = mock_status.call_args_list[-1][0][0]
+            assert "エラー" in last_status
 
     def test_execute_multiple_profiles(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
         """複数プロファイルの実行"""
@@ -72,12 +76,13 @@ class TestExecute:
             data=DataConfig(
                 selenium=tmp_path / "selenium",
                 dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
 
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0) as mock_execute,
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True) as mock_execute,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -87,14 +92,15 @@ class TestExecute:
             assert ret == 0
             assert mock_execute.call_count == 2
 
-    def test_execute_cumulative_errors(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
-        """複数プロファイルでエラーが累積される"""
+    def test_execute_partial_failure(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """一部プロファイルが失敗しても非ゼロ終了コードになる"""
         config = AppConfig(
             profile=[profile_config, profile_config, profile_config],  # 3つのプロファイル
             slack=SlackEmptyConfig(),
             data=DataConfig(
                 selenium=tmp_path / "selenium",
                 dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -103,16 +109,18 @@ class TestExecute:
             # 1つ目と3つ目でエラー
             unittest.mock.patch(
                 "mercari_bot.mercari_price_down.execute",
-                side_effect=[-1, 0, -1],
+                side_effect=[False, True, False],
             ),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
-            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
+            unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status") as mock_status,
         ):
             ret = app.execute(config, notify_log=False, debug_mode=True, log_str_io=None)
 
-            # -1 + 0 + -1 = -2
-            assert ret == -2
+            assert ret == 1
+            # 失敗プロファイル数がステータスに表示される
+            last_status = mock_status.call_args_list[-1][0][0]
+            assert "2/3" in last_status
 
     def test_execute_progress_always_stopped(self, mock_config: AppConfig):
         """例外発生時でも progress.stop() が呼ばれる"""
@@ -137,7 +145,7 @@ class TestExecute:
         log_str_io.write("Test log content")
 
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0),
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -155,7 +163,7 @@ class TestExecute:
         log_str_io.write("Test log content")
 
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0),
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -170,7 +178,7 @@ class TestExecute:
     def test_execute_notify_not_called_when_no_log_str_io(self, mock_config: AppConfig):
         """log_str_io=None の場合は通知しない"""
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0),
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -185,7 +193,7 @@ class TestExecute:
     def test_execute_passes_progress_to_mercari_price_down(self, mock_config: AppConfig):
         """progress が mercari_price_down に渡される"""
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0) as mock_execute,
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True) as mock_execute,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -197,10 +205,10 @@ class TestExecute:
             assert "progress" in call_kwargs
             assert isinstance(call_kwargs["progress"], mercari_bot.progress.ProgressDisplay)
 
-    def test_execute_passes_correct_paths(self, mock_config: AppConfig, tmp_path: pathlib.Path):
-        """正しいパスが mercari_price_down に渡される"""
+    def test_execute_passes_config(self, mock_config: AppConfig):
+        """config が mercari_price_down に渡される（パスは config.data から取得される）"""
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0) as mock_execute,
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True) as mock_execute,
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "start"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "stop"),
             unittest.mock.patch.object(mercari_bot.progress.ProgressDisplay, "set_status"),
@@ -208,8 +216,20 @@ class TestExecute:
             app.execute(mock_config, notify_log=False, debug_mode=True, log_str_io=None)
 
             call_args = mock_execute.call_args[0]
-            assert call_args[2] == mock_config.data.selenium
-            assert call_args[3] == mock_config.data.dump
+            assert call_args[0] is mock_config
+            assert call_args[1] is mock_config.profile[0]
+
+
+class TestSchemaPath:
+    """スキーマパス解決のテスト（BUG-9 回帰テスト）"""
+
+    def test_schema_path_is_absolute(self):
+        """スキーマパスが CWD に依存しない絶対パスで解決される"""
+        assert app._SCHEMA_CONFIG.is_absolute()
+
+    def test_schema_path_exists(self):
+        """解決されたスキーマパスにファイルが存在する"""
+        assert app._SCHEMA_CONFIG.is_file()
 
 
 class TestProgressIntegration:
@@ -224,6 +244,7 @@ class TestProgressIntegration:
             data=DataConfig(
                 selenium=tmp_path / "selenium",
                 dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -242,7 +263,7 @@ class TestProgressIntegration:
             call_order.append(f"status:{status[:10]}")
 
         with (
-            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=0),
+            unittest.mock.patch("mercari_bot.mercari_price_down.execute", return_value=True),
             unittest.mock.patch.object(
                 mercari_bot.progress.ProgressDisplay, "start", side_effect=track_start
             ),

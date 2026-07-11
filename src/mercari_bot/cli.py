@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import logging
+import pathlib
 import sys
 
 import docopt
@@ -28,7 +29,8 @@ import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig
 
-_SCHEMA_CONFIG = "schema/config.schema"
+# NOTE: CWD に依存せず、リポジトリルート基準でスキーマを解決する
+_SCHEMA_CONFIG = pathlib.Path(__file__).parents[2] / "schema" / "config.schema"
 
 
 def execute(
@@ -38,7 +40,7 @@ def execute(
     log_str_io: io.StringIO | None,
     clear_profile_on_browser_error: bool = False,
 ) -> int:
-    ret_code = 0
+    failed_count = 0
 
     logging.info("Start")
 
@@ -50,20 +52,31 @@ def execute(
 
     try:
         for profile in config.profile:
-            ret_code += mercari_bot.mercari_price_down.execute(
+            success = mercari_bot.mercari_price_down.execute(
                 config,
                 profile,
-                config.data.selenium,
-                config.data.dump,
                 debug_mode,
                 progress=progress,
                 clear_profile_on_browser_error=clear_profile_on_browser_error,
             )
+            if not success:
+                failed_count += 1
 
-        progress.set_status("🎉  全プロファイル完了")
+        if failed_count == 0:
+            progress.set_status("🎉  全プロファイル完了")
+        else:
+            progress.set_status(
+                f"⚠️  {failed_count}/{len(config.profile)} プロファイルでエラーが発生しました",
+                is_error=True,
+            )
     finally:
         progress.stop()
 
+    logging.info(
+        "%d/%d プロファイル成功",
+        len(config.profile) - failed_count,
+        len(config.profile),
+    )
     logging.info("Finish!")
 
     if notify_log and log_str_io is not None:
@@ -77,7 +90,7 @@ def execute(
             log_str_io.getvalue(),
         )
 
-    return ret_code
+    return 1 if failed_count else 0
 
 
 def main() -> None:

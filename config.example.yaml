@@ -21,15 +21,17 @@ profile:
 data:
     selenium: ./data # Chrome プロファイル等の保存先
     dump: ./data/debug # エラー時のスクリーンショット等の保存先
-
+    # history: ./data/history.db # 値下げ履歴 DB（省略時は selenium 配下の history.db）
 
 # 動作ログをメールで送信する場合，以下を設定
 # mail:
-#     user:
-#     pass:
-#     from:
-#     to:
-#     subject:
+#     smtp:
+#         host: smtp.example.com
+#         port: 587
+#     user: MAIL_USER
+#     pass: MAIL_PASSWORD
+#     from: from@example.com
+#     to: to@example.com
 
 # 動作ログを Slack で通知したり，Slack 経由で認証コードを入力したい場合，以下を設定
 # slack:

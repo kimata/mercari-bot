@@ -49,6 +49,14 @@ class TestParseModifiedHour:
         """1週間相当"""
         assert mercari_bot.logic.parse_modified_hour("7日前") == 168
 
+    def test_weeks_ago_single(self):
+        """1週間前"""
+        assert mercari_bot.logic.parse_modified_hour("1週間前") == 24 * 7
+
+    def test_weeks_ago_multiple(self):
+        """複数週間前"""
+        assert mercari_bot.logic.parse_modified_hour("3週間前") == 24 * 7 * 3
+
     def test_months_ago_single(self):
         """1か月前"""
         assert mercari_bot.logic.parse_modified_hour("1か月前") == 24 * 30

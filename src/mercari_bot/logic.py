@@ -32,6 +32,8 @@ def parse_modified_hour(text: str) -> int:
         return int("".join(filter(str.isdigit, text)))
     elif re.search(r"日前", text):
         return int("".join(filter(str.isdigit, text))) * 24
+    elif re.search(r"週間前", text):
+        return int("".join(filter(str.isdigit, text))) * 24 * 7
     elif re.search(r"か月前", text):
         return int("".join(filter(str.isdigit, text))) * 24 * 30
     elif re.search(r"半年以上前", text):
@@ -55,7 +57,8 @@ def get_discount_step(
         値下げ幅。値下げ後の価格（10円単位丸め後）が下限（threshold）を
         下回る場合など、値下げしない場合は None
     """
-    for discount_info in sorted(profile.discount, key=lambda x: x.favorite_count, reverse=True):
+    # NOTE: profile.discount は設定読み込み時に favorite_count 降順でソート済み
+    for discount_info in profile.discount:
         if favorite_count >= discount_info.favorite_count:
             if round_price(price - discount_info.step) >= discount_info.threshold:
                 return discount_info.step

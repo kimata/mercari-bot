@@ -16,6 +16,7 @@ from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
 from my_lib.store.mercari.config import MercariItem
 
 import mercari_bot.exceptions
+import mercari_bot.history
 import mercari_bot.mercari_price_down
 import mercari_bot.progress
 from mercari_bot.config import AppConfig, DataConfig, ProfileConfig
@@ -54,8 +55,9 @@ class TestExecute:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -91,12 +93,10 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
-            assert ret == 0
+            assert ret is True
 
     def test_execute_with_progress(
         self,
@@ -119,8 +119,6 @@ class TestExecute:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
             )
@@ -155,12 +153,10 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
-            assert ret == -1
+            assert ret is False
             mock_notify.assert_called_once()
             # タイトルに「ログイン」が含まれる
             assert "ログイン" in mock_notify.call_args[0][1]
@@ -186,12 +182,10 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
-            assert ret == -1
+            assert ret is False
             mock_notify.assert_called_once()
             # タイトルに「値下げ」が含まれる
             assert "値下げ" in mock_notify.call_args[0][1]
@@ -219,8 +213,6 @@ class TestExecute:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
             )
@@ -257,8 +249,6 @@ class TestExecute:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
@@ -283,8 +273,6 @@ class TestExecute:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
@@ -311,16 +299,17 @@ class TestExecute:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
             )
 
-            # progress_observer キーワード引数が渡される
+            # progress_observer には全アイテム記録用のラッパーが渡され、
+            # 内側の observer として progress が使われる
             call_kwargs = mock_iter.call_args[1]
             assert "progress_observer" in call_kwargs
-            assert call_kwargs["progress_observer"] == mock_progress
+            observer = call_kwargs["progress_observer"]
+            assert isinstance(observer, mercari_bot.progress.ItemRecordingObserver)
+            assert observer.inner == mock_progress
 
     def test_execute_session_error_retry_success(
         self,
@@ -370,13 +359,11 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == 0  # リトライで成功
+            assert ret is True  # リトライで成功
             # BrowserManager が2回作成される（初回 + リトライ）
             assert browser_manager_call_count == 2
 
@@ -401,13 +388,11 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 clear_profile_on_browser_error=False,  # リトライ無効
             )
 
-            assert ret == -1  # リトライせずに失敗
+            assert ret is False  # リトライせずに失敗
             mock_delete_profile.assert_not_called()  # プロファイル削除は呼ばれない
 
     def test_execute_session_error_retry_exhausted(
@@ -441,13 +426,11 @@ class TestExecute:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == -1  # 最終的に失敗
+            assert ret is False  # 最終的に失敗
             # BrowserManager が2回作成される（初回 + リトライ）
             assert browser_manager_call_count == 2
 
@@ -497,18 +480,6 @@ class TestExecuteItem:
         wait = unittest.mock.MagicMock()
         return wait
 
-    def test_execute_item_skip_stopped(self, mock_driver, mock_wait, profile_config: ProfileConfig):
-        """公開停止中のアイテムはスキップ"""
-        item = _create_mock_item(is_stop=1)
-
-        # 例外が発生しないことを確認（スキップ）
-        mercari_bot.mercari_price_down._execute_item(
-            mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
-        )
-
-        # 価格変更の操作は行われない
-        mock_driver.find_element.assert_not_called()
-
     def test_execute_item_skip_recent(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """最近更新されたアイテムはスキップ"""
         item = _create_mock_item()
@@ -519,12 +490,12 @@ class TestExecuteItem:
         mock_wait.until.return_value = mock_element
 
         with unittest.mock.patch("my_lib.selenium_util.click_xpath"):
-            mercari_bot.mercari_price_down._execute_item(
+            result = mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
 
         # interval.hour (20) より小さいのでスキップ
-        # 価格入力欄へのアクセスは行われない
+        assert result.action == mercari_bot.history.ItemAction.SKIP_RECENT
 
 
 class TestExecuteItemWithSlackConfig:
@@ -542,8 +513,9 @@ class TestExecuteItemWithSlackConfig:
             profile=[profile_config],
             slack=slack_config,
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -571,8 +543,6 @@ class TestExecuteItemWithSlackConfig:
             mercari_bot.mercari_price_down.execute(
                 mock_config_with_slack,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
@@ -591,8 +561,9 @@ class TestBrowserStartupError:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -617,13 +588,11 @@ class TestBrowserStartupError:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == -1
+            assert ret is False
             mock_notify.assert_called_once()
             assert "ブラウザ起動" in mock_notify.call_args[0][1]
 
@@ -644,13 +613,11 @@ class TestBrowserStartupError:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 clear_profile_on_browser_error=False,
             )
 
-            assert ret == -1
+            assert ret is False
             # プロファイル削除は呼ばれない
             mock_delete.assert_not_called()
 
@@ -673,14 +640,12 @@ class TestBrowserStartupError:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == -1
+            assert ret is False
             # エラーステータスが設定される
             error_calls = [call for call in mock_progress.set_status.call_args_list if "エラー" in call[0][0]]
             assert len(error_calls) > 0
@@ -697,8 +662,9 @@ class TestSessionErrorWithProgress:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -734,14 +700,12 @@ class TestSessionErrorWithProgress:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == 0  # 成功
+            assert ret is True  # 成功
             # リトライメッセージが表示される
             retry_calls = [
                 call for call in mock_progress.set_status.call_args_list if "リトライ" in call[0][0]
@@ -772,14 +736,12 @@ class TestSessionErrorWithProgress:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
                 clear_profile_on_browser_error=True,
             )
 
-            assert ret == -1  # 失敗
+            assert ret is False  # 失敗
             # セッションエラーのステータス
             error_calls = [
                 call for call in mock_progress.set_status.call_args_list if "セッションエラー" in call[0][0]
@@ -797,8 +759,9 @@ class TestLoginErrorWithProgress:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -827,13 +790,11 @@ class TestLoginErrorWithProgress:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
                 progress=mock_progress,
             )
 
-            assert ret == -1
+            assert ret is False
             # ログインエラーステータス
             error_calls = [
                 call for call in mock_progress.set_status.call_args_list if "ログイン" in call[0][0]
@@ -854,8 +815,9 @@ class TestItemHandler:
             profile=[profile_config],
             slack=SlackEmptyConfig(),
             data=DataConfig(
-                selenium=str(tmp_path / "selenium"),
-                dump=str(tmp_path / "dump"),
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
             ),
             mail=unittest.mock.MagicMock(),
         )
@@ -868,7 +830,7 @@ class TestItemHandler:
     ):
         """iter_items_on_display から item_handler が呼び出される"""
         mock_driver = unittest.mock.MagicMock()
-        item = _create_mock_item(is_stop=1)  # is_stop=1 でスキップ
+        item = _create_mock_item()
 
         def iter_items_side_effect(
             driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
@@ -885,19 +847,19 @@ class TestItemHandler:
                 "my_lib.store.mercari.scrape.iter_items_on_display",
                 side_effect=iter_items_side_effect,
             ),
+            unittest.mock.patch("mercari_bot.mercari_price_down._execute_item") as mock_execute_item,
             unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
             unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
         ):
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
-            # 正常終了（item_handler は呼ばれるが、is_stop=1 なのでスキップ）
-            assert ret == 0
+            # 正常終了し、item_handler 経由で _execute_item が呼ばれる
+            assert ret is True
+            mock_execute_item.assert_called_once()
 
     def test_price_verification_error_notifies_and_fails(
         self,
@@ -934,14 +896,100 @@ class TestItemHandler:
             ret = mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
-            assert ret == -1
+            assert ret is False
             mock_notify.assert_called_once()
             assert "価格検証" in mock_notify.call_args[0][1]
+
+    def test_post_submit_timeout_notifies_and_fails(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """送信後の検証タイムアウトも Slack 通知され、プロファイルの結果が失敗になる（§3.1）"""
+        mock_driver = unittest.mock.MagicMock()
+        item = _create_mock_item()
+
+        def iter_items_side_effect(
+            driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
+        ):
+            for handler in handlers:
+                handler(driver, wait, item, debug_mode)
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.scrape.iter_items_on_display",
+                side_effect=iter_items_side_effect,
+            ),
+            unittest.mock.patch(
+                "mercari_bot.mercari_price_down._execute_item",
+                side_effect=mercari_bot.exceptions.PriceVerificationTimeoutError("テスト商品"),
+            ),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("mercari_bot.notify_slack.dump_and_notify_error") as mock_notify,
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                debug_mode=True,
+            )
+
+            assert ret is False
+            mock_notify.assert_called_once()
+            assert "価格検証" in mock_notify.call_args[0][1]
+
+    def test_item_result_is_recorded(
+        self,
+        mock_config: AppConfig,
+        profile_config: ProfileConfig,
+        tmp_path: pathlib.Path,
+    ):
+        """item_handler が処理結果を履歴 DB に記録する（F1）"""
+        mock_driver = unittest.mock.MagicMock()
+        item = _create_mock_item()
+        result = mercari_bot.history.ItemResult(mercari_bot.history.ItemAction.PRICE_DOWN, 3000, 2900)
+
+        def iter_items_side_effect(
+            driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
+        ):
+            for handler in handlers:
+                handler(driver, wait, item, debug_mode)
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.scrape.iter_items_on_display",
+                side_effect=iter_items_side_effect,
+            ),
+            unittest.mock.patch(
+                "mercari_bot.mercari_price_down._execute_item",
+                return_value=result,
+            ),
+            unittest.mock.patch("mercari_bot.history.HistoryDb") as mock_history_cls,
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                debug_mode=False,
+            )
+
+            assert ret is True
+            mock_history = mock_history_cls.return_value
+            mock_history_cls.assert_called_once_with(mock_config.data.history)
+            mock_history.add_record.assert_called_once_with(profile_config.name, item, result)
+            # 走査完了後にスナップショットが更新される
+            mock_history.replace_snapshot.assert_called_once()
 
     def test_max_consecutive_failures_is_passed(
         self,
@@ -963,8 +1011,6 @@ class TestItemHandler:
             mercari_bot.mercari_price_down.execute(
                 mock_config,
                 profile_config,
-                tmp_path / "selenium",
-                tmp_path / "dump",
                 debug_mode=True,
             )
 
@@ -1003,10 +1049,12 @@ class TestExecuteItemPriceChange:
                 return_value=True,  # タイムセールボタンが存在
             ),
         ):
-            # タイムセール中なので例外なく終了
-            mercari_bot.mercari_price_down._execute_item(
+            # タイムセール中なのでスキップ
+            result = mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
+
+            assert result.action == mercari_bot.history.ItemAction.SKIP_TIME_SALE
 
     def test_execute_item_with_shipping_fee(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """送料ありの場合のテスト"""
@@ -1139,10 +1187,12 @@ class TestExecuteItemPriceChange:
             unittest.mock.patch("my_lib.selenium_util.click_xpath"),
             unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
         ):
-            # 割引対象外なので例外なく終了
-            mercari_bot.mercari_price_down._execute_item(
+            # 割引対象外なのでスキップ
+            result = mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
+
+            assert result.action == mercari_bot.history.ItemAction.SKIP_NO_DISCOUNT
 
     def test_execute_item_price_change_success(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """価格変更成功（debug_mode=True）"""
@@ -1178,10 +1228,93 @@ class TestExecuteItemPriceChange:
             unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
             unittest.mock.patch("time.sleep"),
         ):
-            # 正常終了
+            # 正常終了し、値下げ結果が返る
+            result = mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
+            )
+
+            assert result.action == mercari_bot.history.ItemAction.PRICE_DOWN
+            assert result.old_price == 3000
+            assert result.new_price == 3000  # debug_mode=True なので同額
+
+    def test_execute_item_post_submit_timeout(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """送信後のタイムアウトは PriceVerificationTimeoutError に変換される（§3.1）
+
+        TimeoutException のまま伝播させると my_lib のリトライで再実行され、
+        interval 判定でスキップ → 検証されないまま正常終了に化けるため。
+        """
+        item = _create_mock_item()
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        # wait.until の呼び出し順: 更新時間 → タイトル → オークション → 価格入力欄
+        # →（送信）→ h1 待機。送信後の h1 待機でタイムアウトさせる。
+        mock_wait.until.side_effect = [
+            mock_modified_element,
+            unittest.mock.MagicMock(),
+            unittest.mock.MagicMock(),
+            unittest.mock.MagicMock(),
+            selenium.common.exceptions.TimeoutException(),
+        ]
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "3000"
+
+        def find_element_side_effect(by, xpath):
+            if 'name="price"' in xpath:
+                return mock_price_input
+            return unittest.mock.MagicMock()
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.return_value = []
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("time.sleep"),
+            pytest.raises(mercari_bot.exceptions.PriceVerificationTimeoutError),
+        ):
             mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
+
+    def test_execute_item_pre_submit_timeout_propagates(
+        self, mock_driver, mock_wait, profile_config: ProfileConfig
+    ):
+        """送信前のタイムアウトは TimeoutException のまま伝播する（リトライ可能・回帰テスト）"""
+        item = _create_mock_item()
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+
+        # 送信前のタイトル待機（2 回目の wait.until）でタイムアウトさせる
+        mock_wait.until.side_effect = [
+            mock_modified_element,
+            selenium.common.exceptions.TimeoutException(),
+        ]
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath"),
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("time.sleep"),
+            pytest.raises(selenium.common.exceptions.TimeoutException),
+        ):
+            mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
+            )
+
+    def test_post_submit_error_hierarchy(self):
+        """送信後エラーの例外階層（item_handler は PostSubmitError で捕捉する）"""
+        assert issubclass(
+            mercari_bot.exceptions.PriceVerificationError, mercari_bot.exceptions.PostSubmitError
+        )
+        assert issubclass(
+            mercari_bot.exceptions.PriceVerificationTimeoutError, mercari_bot.exceptions.PostSubmitError
+        )
+        assert issubclass(mercari_bot.exceptions.PostSubmitError, mercari_bot.exceptions.PriceError)
 
     def test_execute_item_price_verification_failed(
         self, mock_driver, mock_wait, profile_config: ProfileConfig
@@ -1223,3 +1356,113 @@ class TestExecuteItemPriceChange:
             mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
+
+
+class TestSoldDetection:
+    """売却検知のテスト（F5）"""
+
+    @pytest.fixture
+    def mock_config(self, profile_config: ProfileConfig, tmp_path: pathlib.Path):
+        """モック AppConfig"""
+        return AppConfig(
+            profile=[profile_config],
+            slack=SlackEmptyConfig(),
+            data=DataConfig(
+                selenium=tmp_path / "selenium",
+                dump=tmp_path / "dump",
+                history=tmp_path / "history.db",
+            ),
+            mail=unittest.mock.MagicMock(),
+        )
+
+    def _execute_with_items(self, mock_config: AppConfig, profile_config: ProfileConfig, items, debug_mode):
+        """iter_items_on_display が items を on_item_start に流す状態で execute を実行"""
+        mock_driver = unittest.mock.MagicMock()
+
+        def iter_items_side_effect(
+            driver, wait, debug_mode, handlers, progress_observer=None, max_consecutive_failures=None
+        ):
+            assert progress_observer is not None
+            for index, item in enumerate(items, start=1):
+                progress_observer.on_item_start(index, len(items), item)
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.create_driver", return_value=mock_driver),
+            unittest.mock.patch("my_lib.selenium_util.clear_cache"),
+            unittest.mock.patch("my_lib.store.mercari.login.execute"),
+            unittest.mock.patch(
+                "my_lib.store.mercari.scrape.iter_items_on_display",
+                side_effect=iter_items_side_effect,
+            ),
+            unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
+            unittest.mock.patch("my_lib.selenium_util.quit_driver_gracefully"),
+            unittest.mock.patch("my_lib.notify.slack.info") as mock_info,
+        ):
+            ret = mercari_bot.mercari_price_down.execute(
+                mock_config,
+                profile_config,
+                debug_mode=debug_mode,
+            )
+
+        return ret, mock_info
+
+    def test_removed_item_is_notified(self, mock_config: AppConfig, profile_config: ProfileConfig):
+        """前回の一覧から消えたアイテムが売却として通知される"""
+        sold_item = _create_mock_item(name="売れた商品", item_id="sold-id")
+        remaining_item = _create_mock_item(name="残っている商品", item_id="remaining-id")
+
+        # 前回実行: 2 アイテムが存在
+        history_db = mercari_bot.history.HistoryDb(mock_config.data.history)
+        history_db.replace_snapshot(profile_config.name, [sold_item, remaining_item])
+        history_db.add_record(
+            profile_config.name,
+            sold_item,
+            mercari_bot.history.ItemResult(mercari_bot.history.ItemAction.PRICE_DOWN, 3100, 3000),
+        )
+
+        # 今回実行: sold_item が消えている
+        ret, mock_info = self._execute_with_items(
+            mock_config, profile_config, [remaining_item], debug_mode=False
+        )
+
+        assert ret is True
+        mock_info.assert_called_once()
+        assert "売却" in mock_info.call_args[0][1]
+        message = mock_info.call_args[0][2]
+        assert "売れた商品" in message
+        assert "値下げ 1回" in message
+
+        # スナップショットは今回の内容に更新される
+        snapshot = history_db.get_snapshot(profile_config.name)
+        assert [s.item_id for s in snapshot] == ["remaining-id"]
+
+    def test_no_removed_items_no_notification(self, mock_config: AppConfig, profile_config: ProfileConfig):
+        """アイテムが消えていなければ通知しない"""
+        item = _create_mock_item()
+
+        history_db = mercari_bot.history.HistoryDb(mock_config.data.history)
+        history_db.replace_snapshot(profile_config.name, [item])
+
+        ret, mock_info = self._execute_with_items(mock_config, profile_config, [item], debug_mode=False)
+
+        assert ret is True
+        mock_info.assert_not_called()
+
+    def test_first_run_no_notification(self, mock_config: AppConfig, profile_config: ProfileConfig):
+        """初回実行（スナップショットなし）では通知しない"""
+        ret, mock_info = self._execute_with_items(
+            mock_config, profile_config, [_create_mock_item()], debug_mode=False
+        )
+
+        assert ret is True
+        mock_info.assert_not_called()
+
+    def test_debug_mode_skips_detection_and_db(self, mock_config: AppConfig, profile_config: ProfileConfig):
+        """デバッグモードでは売却検知も DB 作成も行わない"""
+        ret, mock_info = self._execute_with_items(
+            mock_config, profile_config, [_create_mock_item()], debug_mode=True
+        )
+
+        assert ret is True
+        mock_info.assert_not_called()
+        assert not mock_config.data.history.exists()

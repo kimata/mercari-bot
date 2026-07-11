@@ -187,6 +187,7 @@ def execute(item_count: int = 20) -> int:
         data=DataConfig(
             selenium=pathlib.Path(tempfile.gettempdir()) / "demo-selenium",
             dump=pathlib.Path(tempfile.gettempdir()) / "demo-dump",
+            history=pathlib.Path(tempfile.gettempdir()) / "demo-selenium" / "history.db",
         ),
         mail=unittest.mock.MagicMock(),
     )

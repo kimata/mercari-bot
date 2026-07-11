@@ -173,6 +173,7 @@ def app_config(profile_config: ProfileConfig, tmp_path: pathlib.Path) -> AppConf
         data=DataConfig(
             selenium=tmp_path / "selenium",
             dump=tmp_path / "dump",
+            history=tmp_path / "history.db",
         ),
         mail=unittest.mock.MagicMock(),
     )
