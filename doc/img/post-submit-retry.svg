@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#555"/>
+    </marker>
+  </defs>
+
+  <!-- 左パネル: 送信前 -->
+  <rect x="20" y="20" width="420" height="440" rx="10" fill="#f6fdf8" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="230" y="48" font-size="14" font-weight="bold" fill="#1e8449" text-anchor="middle">送信前の TimeoutException</text>
+  <text x="230" y="68" font-size="11.5" fill="#1e8449" text-anchor="middle">→ my_lib のリトライに乗せる（安全）</text>
+
+  <rect x="50" y="90" width="360" height="46" rx="6" fill="#fff" stroke="#555"/>
+  <text x="230" y="110" font-size="11.5" text-anchor="middle">_execute_item() 実行中、送信前の待機で</text>
+  <text x="230" y="127" font-size="11.5" text-anchor="middle">TimeoutException 発生（例: 編集ページのタイトル待機）</text>
+  <line x1="230" y1="136" x2="230" y2="158" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="50" y="161" width="360" height="46" rx="6" fill="#fff" stroke="#555"/>
+  <text x="230" y="181" font-size="11.5" text-anchor="middle">例外はそのまま my_lib（scrape）へ伝播</text>
+  <text x="230" y="198" font-size="10" fill="#666" text-anchor="middle">サーバ状態は変更されていない</text>
+  <line x1="230" y1="207" x2="230" y2="229" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="50" y="232" width="360" height="46" rx="6" fill="#eef4fb" stroke="#3572b0"/>
+  <text x="230" y="252" font-size="11.5" text-anchor="middle">my_lib が商品ページを開き直して</text>
+  <text x="230" y="269" font-size="11.5" text-anchor="middle">item_func（値下げ処理）を再実行</text>
+  <line x1="230" y1="278" x2="230" y2="300" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="50" y="303" width="360" height="46" rx="6" fill="#e9f7ef" stroke="#27ae60"/>
+  <text x="230" y="323" font-size="11.5" font-weight="bold" fill="#1e8449" text-anchor="middle">再実行で正常に値下げ処理を継続</text>
+  <text x="230" y="340" font-size="10" fill="#1e8449" text-anchor="middle">リトライ上限超過時は連続失敗として扱われる</text>
+
+  <rect x="50" y="380" width="360" height="56" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="65" y="400" font-size="10.5" fill="#665500">未送信のため、何度実行し直しても価格・更新時間は</text>
+  <text x="65" y="416" font-size="10.5" fill="#665500">変化しない。従来どおりのリトライで問題ない。</text>
+
+  <!-- 右パネル: 送信後 -->
+  <rect x="460" y="20" width="420" height="440" rx="10" fill="#fdf6f5" stroke="#c0392b" stroke-width="1.5"/>
+  <text x="670" y="48" font-size="14" font-weight="bold" fill="#c0392b" text-anchor="middle">送信後の TimeoutException</text>
+  <text x="670" y="68" font-size="11.5" fill="#c0392b" text-anchor="middle">→ 専用例外に変換してリトライさせない</text>
+
+  <rect x="490" y="90" width="360" height="46" rx="6" fill="#fff" stroke="#555"/>
+  <text x="670" y="110" font-size="11.5" text-anchor="middle">「変更する」送信済み（サーバには反映済みの可能性）</text>
+  <text x="670" y="127" font-size="11.5" text-anchor="middle">→ 検証用の h1 / 価格待機で TimeoutException</text>
+  <line x1="670" y1="136" x2="670" y2="158" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="490" y="161" width="360" height="46" rx="6" fill="#fdecea" stroke="#c0392b"/>
+  <text x="670" y="181" font-size="11.5" font-weight="bold" fill="#c0392b" text-anchor="middle">PriceVerificationTimeoutError に変換</text>
+  <text x="670" y="198" font-size="10" fill="#c0392b" text-anchor="middle">（PostSubmitError 系 = my_lib のリトライ対象外）</text>
+  <line x1="670" y1="207" x2="670" y2="229" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="490" y="232" width="360" height="46" rx="6" fill="#fff" stroke="#555"/>
+  <text x="670" y="252" font-size="11.5" text-anchor="middle">item_handler が PostSubmitError として捕捉</text>
+  <text x="670" y="269" font-size="10" fill="#666" text-anchor="middle">ページダンプ + Slack 通知、FAILED を履歴に記録</text>
+  <line x1="670" y1="278" x2="670" y2="300" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="490" y="303" width="360" height="46" rx="6" fill="#fdecea" stroke="#c0392b"/>
+  <text x="670" y="323" font-size="11.5" font-weight="bold" fill="#c0392b" text-anchor="middle">プロファイルの結果を失敗（False）にする</text>
+  <text x="670" y="340" font-size="10" fill="#c0392b" text-anchor="middle">アイテム走査自体は継続する</text>
+
+  <rect x="490" y="380" width="360" height="56" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="505" y="400" font-size="10.5" fill="#665500">変換しない場合: リトライ再実行時に更新時間が「数秒前」の</text>
+  <text x="505" y="416" font-size="10.5" fill="#665500">ため interval 判定で正常スキップ → 検証されないまま</text>
+  <text x="505" y="432" font-size="10.5" fill="#665500">成功扱いになってしまう（この経路を遮断するのが目的）。</text>
+
+  <!-- 下部注記 -->
+  <rect x="20" y="480" width="860" height="60" rx="8" fill="#f7fafd" stroke="#3572b0"/>
+  <text x="40" y="503" font-size="11.5" fill="#1f4e79" font-weight="bold">境界の実装:</text>
+  <text x="40" y="522" font-size="11" fill="#1f4e79">_execute_item() 内で edit-button クリック以降の処理を try/except で囲み、TimeoutException を</text>
+  <text x="40" y="537" font-size="11" fill="#1f4e79">PriceVerificationTimeoutError へ raise ... from で変換している（mercari_price_down.py）。</text>
+</svg>

@@ -40,6 +40,7 @@
 
 ### 📝 Documentation
 
+- アーキテクチャドキュメント（doc/architecture.md）を SVG 図解付きで追加
 - README のセットアップ用設定例にメルカリ認証情報と data セクションを追記
 - schema/config.schema に data セクションの定義を追加
 - README / CLAUDE.md を実装に同期（存在しない `src/app.py` への言及を `mercari-bot` コマンドに修正、アーキテクチャ節を実構成に更新、CronJob 時刻を 7:00/18:00 に修正、black/flake8 を ruff に修正）

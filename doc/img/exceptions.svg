@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="440" viewBox="0 0 900 440" font-family="sans-serif">
+  <!-- 接続線 -->
+  <g stroke="#888" stroke-width="1.3" fill="none">
+    <!-- MercariBotError → DiscountError -->
+    <line x1="450" y1="64" x2="450" y2="100"/>
+    <!-- DiscountError → ModifiedTimeParseError / PriceError -->
+    <path d="M 450 144 L 450 162 L 190 162 L 190 180"/>
+    <path d="M 450 144 L 450 180"/>
+    <!-- PriceError → 3 children -->
+    <path d="M 450 224 L 450 244 L 190 244 L 190 262"/>
+    <path d="M 450 224 L 450 262"/>
+    <path d="M 450 224 L 450 244 L 700 244 L 700 262"/>
+    <!-- PostSubmitError → 2 children -->
+    <path d="M 700 310 L 700 328 L 560 328 L 560 346"/>
+    <path d="M 700 310 L 700 328 L 780 328 L 780 346"/>
+  </g>
+
+  <!-- MercariBotError -->
+  <rect x="340" y="20" width="220" height="44" rx="6" fill="#fff" stroke="#555"/>
+  <text x="450" y="39" font-size="13" font-weight="bold" text-anchor="middle">MercariBotError</text>
+  <text x="450" y="56" font-size="10" fill="#666" text-anchor="middle">基底例外</text>
+
+  <!-- DiscountError -->
+  <rect x="340" y="100" width="220" height="44" rx="6" fill="#fff" stroke="#555"/>
+  <text x="450" y="119" font-size="13" font-weight="bold" text-anchor="middle">DiscountError</text>
+  <text x="450" y="136" font-size="10" fill="#666" text-anchor="middle">値下げ処理関連</text>
+
+  <!-- ModifiedTimeParseError -->
+  <rect x="70" y="180" width="240" height="44" rx="6" fill="#fff" stroke="#555"/>
+  <text x="190" y="199" font-size="12.5" font-weight="bold" text-anchor="middle">ModifiedTimeParseError</text>
+  <text x="190" y="216" font-size="10" fill="#666" text-anchor="middle">更新時間テキストのパース失敗</text>
+
+  <!-- PriceError -->
+  <rect x="340" y="180" width="220" height="44" rx="6" fill="#fff" stroke="#555"/>
+  <text x="450" y="199" font-size="13" font-weight="bold" text-anchor="middle">PriceError</text>
+  <text x="450" y="216" font-size="10" fill="#666" text-anchor="middle">価格関連</text>
+
+  <!-- PriceRetrievalError -->
+  <rect x="80" y="262" width="220" height="48" rx="6" fill="#fff" stroke="#555"/>
+  <text x="190" y="282" font-size="12.5" font-weight="bold" text-anchor="middle">PriceRetrievalError</text>
+  <text x="190" y="300" font-size="10" fill="#666" text-anchor="middle">価格の取得に失敗</text>
+
+  <!-- PriceChangedError -->
+  <rect x="340" y="262" width="220" height="48" rx="6" fill="#fff" stroke="#555"/>
+  <text x="450" y="282" font-size="12.5" font-weight="bold" text-anchor="middle">PriceChangedError</text>
+  <text x="450" y="300" font-size="10" fill="#666" text-anchor="middle">遷移中に価格が変更された</text>
+
+  <!-- PostSubmitError -->
+  <rect x="590" y="262" width="220" height="48" rx="6" fill="#fdecea" stroke="#c0392b" stroke-width="1.8"/>
+  <text x="700" y="282" font-size="12.5" font-weight="bold" fill="#c0392b" text-anchor="middle">PostSubmitError</text>
+  <text x="700" y="300" font-size="10" fill="#c0392b" text-anchor="middle">送信済み・リトライ不可の意味論</text>
+
+  <!-- PriceVerificationError -->
+  <rect x="450" y="346" width="220" height="48" rx="6" fill="#fdecea" stroke="#c0392b"/>
+  <text x="560" y="366" font-size="12" font-weight="bold" fill="#c0392b" text-anchor="middle">PriceVerificationError</text>
+  <text x="560" y="384" font-size="10" fill="#c0392b" text-anchor="middle">編集後の価格が意図と異なる</text>
+
+  <!-- PriceVerificationTimeoutError -->
+  <rect x="660" y="346" width="240" height="48" rx="6" fill="#fdecea" stroke="#c0392b"/>
+  <text x="780" y="366" font-size="11.5" font-weight="bold" fill="#c0392b" text-anchor="middle">PriceVerificationTimeoutError</text>
+  <text x="780" y="384" font-size="10" fill="#c0392b" text-anchor="middle">送信後の検証がタイムアウト</text>
+
+  <!-- 注記 -->
+  <rect x="70" y="346" width="330" height="66" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="85" y="368" font-size="10.5" fill="#665500">item_handler は PostSubmitError を捕捉して</text>
+  <text x="85" y="384" font-size="10.5" fill="#665500">「Slack 通知 + プロファイル失敗」で終了させる。</text>
+  <text x="85" y="400" font-size="10.5" fill="#665500">それ以外の例外は my_lib のリトライ制御に委ねる。</text>
+</svg>

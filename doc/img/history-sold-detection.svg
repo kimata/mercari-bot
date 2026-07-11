@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="650" viewBox="0 0 920 650" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#3572b0"/>
+    </marker>
+  </defs>
+
+  <!-- 実行フロー（左） -->
+  <text x="40" y="40" font-size="14" font-weight="bold" fill="#333">1 回の実行（プロファイル毎）</text>
+
+  <rect x="40" y="60" width="360" height="56" rx="6" fill="#fff" stroke="#555"/>
+  <text x="220" y="82" font-size="12" font-weight="bold" text-anchor="middle">ItemRecordingObserver.on_item_start()</text>
+  <text x="220" y="100" font-size="10" fill="#666" text-anchor="middle">出品一覧に出現した全アイテムを seen に記録（公開停止中も含む）</text>
+  <line x1="220" y1="116" x2="220" y2="140" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="143" width="360" height="56" rx="6" fill="#fff" stroke="#555"/>
+  <text x="220" y="165" font-size="12" font-weight="bold" text-anchor="middle">item_handler → HistoryDb.add_record()</text>
+  <text x="220" y="183" font-size="10" fill="#666" text-anchor="middle">ItemResult（action / old_price / new_price）をアイテム毎に記録</text>
+  <line x1="220" y1="199" x2="220" y2="223" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="20" y="226" width="400" height="330" rx="8" fill="none" stroke="#888" stroke-dasharray="6 4"/>
+  <text x="40" y="250" font-size="12" font-weight="bold" fill="#666">走査が正常完了した場合のみ（-D 時は実行しない）</text>
+
+  <rect x="40" y="264" width="360" height="52" rx="6" fill="#fff" stroke="#555"/>
+  <text x="220" y="285" font-size="12" font-weight="bold" text-anchor="middle">get_snapshot()（前回の一覧）と seen を比較</text>
+  <text x="220" y="302" font-size="10" fill="#666" text-anchor="middle">detect_removed_items() = 前回あって今回消えたアイテム</text>
+  <line x1="220" y1="316" x2="220" y2="340" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="343" width="360" height="52" rx="6" fill="#fff" stroke="#555"/>
+  <text x="220" y="364" font-size="12" font-weight="bold" text-anchor="middle">消えたアイテムの値下げ履歴を取得</text>
+  <text x="220" y="381" font-size="10" fill="#666" text-anchor="middle">get_price_down_history()（action = price_down のみ）</text>
+  <line x1="220" y1="395" x2="220" y2="419" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="422" width="360" height="52" rx="6" fill="#e9f7ef" stroke="#27ae60"/>
+  <text x="220" y="443" font-size="12" font-weight="bold" fill="#1e8449" text-anchor="middle">build_sold_message() → Slack info に通知</text>
+  <text x="220" y="460" font-size="10" fill="#1e8449" text-anchor="middle">「メルカリ商品売却検知」売却または取り下げ・値下げ履歴付き</text>
+  <line x1="220" y1="474" x2="220" y2="498" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="501" width="360" height="42" rx="6" fill="#fff" stroke="#555"/>
+  <text x="220" y="520" font-size="12" font-weight="bold" text-anchor="middle">replace_snapshot()</text>
+  <text x="220" y="536" font-size="10" fill="#666" text-anchor="middle">今回の seen でスナップショットを全置換（DELETE → INSERT）</text>
+
+  <!-- DB（右） -->
+  <rect x="480" y="60" width="400" height="420" rx="10" fill="#f7fafd" stroke="#3572b0" stroke-width="2"/>
+  <text x="500" y="90" font-size="14" font-weight="bold" fill="#3572b0">history.db（SQLite）</text>
+  <text x="500" y="108" font-size="10.5" fill="#666">config.data.history（省略時は selenium ディレクトリ配下）</text>
+
+  <!-- price_history -->
+  <rect x="500" y="125" width="360" height="160" rx="6" fill="#fff" stroke="#3572b0"/>
+  <rect x="500" y="125" width="360" height="30" rx="6" fill="#3572b0"/>
+  <text x="680" y="145" font-size="12.5" font-weight="bold" fill="#fff" text-anchor="middle">price_history（アイテム処理 1 件 = 1 行）</text>
+  <text x="515" y="177" font-size="10.5" fill="#333">at（ISO 8601） / profile / item_id / item_name</text>
+  <text x="515" y="197" font-size="10.5" fill="#333">old_price / new_price（スキップ時は NULL）</text>
+  <text x="515" y="217" font-size="10.5" fill="#333">favorite / view</text>
+  <text x="515" y="237" font-size="10.5" fill="#333">action: price_down / skip_recent / skip_time_sale /</text>
+  <text x="515" y="253" font-size="10.5" fill="#333">　　　　skip_auction / skip_no_discount / failed</text>
+  <text x="515" y="273" font-size="9.5" fill="#666">INDEX: (profile, item_id)</text>
+
+  <!-- item_snapshot -->
+  <rect x="500" y="310" width="360" height="120" rx="6" fill="#fff" stroke="#3572b0"/>
+  <rect x="500" y="310" width="360" height="30" rx="6" fill="#3572b0"/>
+  <text x="680" y="330" font-size="12.5" font-weight="bold" fill="#fff" text-anchor="middle">item_snapshot（前回実行時の出品一覧）</text>
+  <text x="515" y="362" font-size="10.5" fill="#333">PRIMARY KEY: (profile, item_id)</text>
+  <text x="515" y="382" font-size="10.5" fill="#333">item_name / price / favorite / view / seen_at</text>
+  <text x="515" y="402" font-size="10.5" fill="#333">実行毎に全置換される</text>
+
+  <text x="500" y="460" font-size="10" fill="#666">接続・スキーマ初期化は my_lib.sqlite_util、</text>
+  <text x="500" y="475" font-size="10" fill="#666">DDL は schema/history.schema.sql（__file__ 基準で解決）</text>
+
+  <!-- フロー ↔ DB の矢印 -->
+  <line x1="400" y1="171" x2="497" y2="185" stroke="#3572b0" stroke-width="1.3" marker-end="url(#arrow-blue)"/>
+  <text x="430" y="165" font-size="9.5" fill="#3572b0">INSERT</text>
+  <line x1="497" y1="360" x2="400" y2="290" stroke="#3572b0" stroke-width="1.3" marker-end="url(#arrow-blue)"/>
+  <text x="430" y="320" font-size="9.5" fill="#3572b0">SELECT</text>
+  <line x1="400" y1="369" x2="497" y2="230" stroke="#3572b0" stroke-width="1.3" marker-end="url(#arrow-blue)"/>
+  <text x="452" y="305" font-size="9.5" fill="#3572b0">SELECT</text>
+  <line x1="400" y1="522" x2="497" y2="410" stroke="#3572b0" stroke-width="1.3" marker-end="url(#arrow-blue)"/>
+  <text x="430" y="480" font-size="9.5" fill="#3572b0">DELETE → INSERT</text>
+
+  <!-- フェイルセーフ注記 -->
+  <rect x="40" y="570" width="840" height="56" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="60" y="592" font-size="10.5" fill="#665500">フェイルセーフ: 初回実行はスナップショットが空なので通知なし。走査が途中で中断した場合はスナップショットを更新しない（誤検知防止）。</text>
+  <text x="60" y="612" font-size="10.5" fill="#665500">add_record の sqlite3.Error はログ出力のみで、値下げ処理を止めない。</text>
+</svg>

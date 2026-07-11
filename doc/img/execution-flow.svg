@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="840" viewBox="0 0 880 840" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#555"/>
+    </marker>
+  </defs>
+
+  <!-- 1. エントリポイント -->
+  <rect x="110" y="20" width="360" height="50" rx="6" fill="#fdeaea" stroke="#E72121" stroke-width="1.5"/>
+  <text x="290" y="41" font-size="13" font-weight="bold" text-anchor="middle">cli.main()</text>
+  <text x="290" y="59" font-size="10.5" fill="#666" text-anchor="middle">console script「mercari-bot」/ python -m mercari_bot</text>
+  <line x1="290" y1="70" x2="290" y2="92" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 2. 引数解析 -->
+  <rect x="110" y="95" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="116" font-size="13" font-weight="bold" text-anchor="middle">引数解析・ロガー初期化</text>
+  <text x="290" y="134" font-size="10.5" fill="#666" text-anchor="middle">-c 設定 / -l ログ通知 / -D デバッグ / -R プロファイル削除</text>
+  <line x1="290" y1="145" x2="290" y2="167" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 3. config.load -->
+  <rect x="110" y="170" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="191" font-size="13" font-weight="bold" text-anchor="middle">config.load()</text>
+  <text x="290" y="209" font-size="10.5" fill="#666" text-anchor="middle">JSON Schema 検証 + 運用ミスの警告ログ</text>
+  <line x1="290" y1="220" x2="290" y2="242" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="530" y="165" width="320" height="60" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="545" y="186" font-size="10.5" fill="#665500">・schema/config.schema は __file__ 基準で解決（CWD 非依存）</text>
+  <text x="545" y="202" font-size="10.5" fill="#665500">・threshold &lt; 300 / favorite_count: 0 の欠如を警告</text>
+  <text x="545" y="218" font-size="10.5" fill="#665500">・discount は favorite_count 降順にソートして格納</text>
+  <line x1="530" y1="195" x2="473" y2="195" stroke="#b7950b" stroke-width="1" stroke-dasharray="4 3"/>
+
+  <!-- 4. cli.execute -->
+  <rect x="110" y="245" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="266" font-size="13" font-weight="bold" text-anchor="middle">cli.execute()</text>
+  <text x="290" y="284" font-size="10.5" fill="#666" text-anchor="middle">ProgressDisplay を生成して start()</text>
+  <line x1="290" y1="295" x2="290" y2="322" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 5. profile ループ -->
+  <rect x="80" y="325" width="420" height="270" rx="8" fill="none" stroke="#888" stroke-dasharray="6 4"/>
+  <text x="100" y="348" font-size="12" font-weight="bold" fill="#666">config.profile 毎に繰り返し</text>
+
+  <rect x="110" y="360" width="360" height="46" rx="6" fill="#fdeaea" stroke="#E72121" stroke-width="1.5"/>
+  <text x="290" y="380" font-size="12.5" font-weight="bold" text-anchor="middle">mercari_price_down.execute()</text>
+  <text x="290" y="397" font-size="10.5" fill="#666" text-anchor="middle">戻り値 bool（成功 = True）</text>
+  <line x1="290" y1="406" x2="290" y2="428" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="110" y="431" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="450" font-size="12" font-weight="bold" text-anchor="middle">HistoryDb / BrowserManager を生成</text>
+  <text x="290" y="468" font-size="10.5" fill="#666" text-anchor="middle">-D 時は NullHistoryDb（DB を作らない）</text>
+  <line x1="290" y1="481" x2="290" y2="503" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <rect x="110" y="506" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="526" font-size="12.5" font-weight="bold" text-anchor="middle">_execute_once() → bool</text>
+  <text x="290" y="544" font-size="10.5" fill="#666" text-anchor="middle">False なら failed_count += 1</text>
+
+  <!-- セッションリトライ注記 -->
+  <rect x="530" y="380" width="320" height="90" rx="6" fill="#fffbe8" stroke="#b7950b"/>
+  <text x="545" y="402" font-size="11" font-weight="bold" fill="#665500">セッションリトライ</text>
+  <text x="545" y="420" font-size="10.5" fill="#665500">InvalidSessionIdException 発生時は</text>
+  <text x="545" y="436" font-size="10.5" fill="#665500">プロファイルをクリアして再試行（最大 1 回）。</text>
+  <text x="545" y="452" font-size="10.5" fill="#665500">それでも失敗なら Slack にエラー通知して False。</text>
+  <line x1="530" y1="425" x2="473" y2="440" stroke="#b7950b" stroke-width="1" stroke-dasharray="4 3"/>
+
+  <!-- _execute_once 注記 -->
+  <rect x="530" y="490" width="320" height="130" rx="6" fill="#f7fafd" stroke="#3572b0"/>
+  <text x="545" y="512" font-size="11" font-weight="bold" fill="#1f4e79">_execute_once() の内訳</text>
+  <text x="545" y="531" font-size="10.5" fill="#1f4e79">① browser_manager.get_driver()（失敗 → 通知 + False）</text>
+  <text x="545" y="548" font-size="10.5" fill="#1f4e79">② my_lib.store.mercari.login.execute()</text>
+  <text x="545" y="565" font-size="10.5" fill="#1f4e79">③ iter_items_on_display()（連続 2 アイテム失敗で中断）</text>
+  <text x="545" y="582" font-size="10.5" fill="#1f4e79">④ 売却検知 + スナップショット更新（-D 時はスキップ）</text>
+  <text x="545" y="599" font-size="10.5" fill="#1f4e79">⑤ 価格検証エラー有無に応じて bool を返す</text>
+  <line x1="530" y1="540" x2="473" y2="531" stroke="#3572b0" stroke-width="1" stroke-dasharray="4 3"/>
+
+  <line x1="290" y1="595" x2="290" y2="622" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 6. 結果表示 -->
+  <rect x="110" y="625" width="360" height="56" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="645" font-size="12.5" font-weight="bold" text-anchor="middle">結果ステータス表示</text>
+  <text x="290" y="661" font-size="10.5" fill="#27ae60" text-anchor="middle">全成功: 🎉 全プロファイル完了</text>
+  <text x="290" y="676" font-size="10.5" fill="#c0392b" text-anchor="middle">失敗あり: ⚠️ N/M プロファイルでエラーが発生しました</text>
+  <line x1="290" y1="681" x2="290" y2="703" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 7. ログ通知 -->
+  <rect x="110" y="706" width="360" height="50" rx="6" fill="#fff" stroke="#555"/>
+  <text x="290" y="727" font-size="12.5" font-weight="bold" text-anchor="middle">-l 指定時: 実行ログを通知</text>
+  <text x="290" y="745" font-size="10.5" fill="#666" text-anchor="middle">my_lib.notify.mail.send() / my_lib.notify.slack.info()</text>
+  <line x1="290" y1="756" x2="290" y2="778" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+  <!-- 8. exit -->
+  <rect x="110" y="781" width="360" height="44" rx="22" fill="#e9f7ef" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="290" y="801" font-size="12.5" font-weight="bold" text-anchor="middle">sys.exit(1 if failed_count else 0)</text>
+  <text x="290" y="817" font-size="10.5" fill="#666" text-anchor="middle">失敗プロファイルの有無で終了コードを決定</text>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="440" viewBox="0 0 920 440" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#3572b0"/>
+    </marker>
+  </defs>
+
+  <!-- Protocol -->
+  <rect x="290" y="20" width="360" height="76" rx="6" fill="#fffbe8" stroke="#b7950b" stroke-dasharray="5 3"/>
+  <text x="470" y="42" font-size="12.5" font-weight="bold" text-anchor="middle">«Protocol» StatusProgressObserver（progress.py）</text>
+  <text x="470" y="61" font-size="10.5" fill="#665500" text-anchor="middle">my_lib.store.mercari.progress.ProgressObserver を拡張</text>
+  <text x="470" y="78" font-size="10.5" fill="#665500" text-anchor="middle">+ start() / stop() / set_status(status, is_error)</text>
+
+  <!-- 実装線 -->
+  <line x1="380" y1="96" x2="255" y2="146" stroke="#b7950b" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <line x1="560" y1="96" x2="680" y2="146" stroke="#b7950b" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <text x="470" y="128" font-size="10" fill="#b7950b" text-anchor="middle">構造的に実装（名前・シグネチャ一致）</text>
+
+  <!-- ProgressDisplay -->
+  <rect x="80" y="150" width="330" height="76" rx="6" fill="#fff" stroke="#555"/>
+  <text x="245" y="172" font-size="12.5" font-weight="bold" text-anchor="middle">ProgressDisplay</text>
+  <text x="245" y="191" font-size="10.5" fill="#666" text-anchor="middle">my_lib.cui_progress.ProgressManager による Rich 表示</text>
+  <text x="245" y="208" font-size="10.5" fill="#666" text-anchor="middle">商品名は rich.cells で表示幅（全角=2 セル）を計算して省略</text>
+
+  <!-- NullProgressDisplay -->
+  <rect x="520" y="150" width="320" height="76" rx="6" fill="#f5f5f5" stroke="#888"/>
+  <text x="680" y="172" font-size="12.5" font-weight="bold" fill="#555" text-anchor="middle">NullProgressDisplay</text>
+  <text x="680" y="191" font-size="10.5" fill="#666" text-anchor="middle">何もしない実装（Null Object Pattern）</text>
+  <text x="680" y="208" font-size="10.5" fill="#666" text-anchor="middle">progress 未指定時に execute() 内で使用</text>
+
+  <!-- ItemRecordingObserver -->
+  <rect x="290" y="270" width="360" height="80" rx="6" fill="#fdeaea" stroke="#E72121" stroke-width="1.5"/>
+  <text x="470" y="292" font-size="12.5" font-weight="bold" text-anchor="middle">ItemRecordingObserver</text>
+  <text x="470" y="311" font-size="10.5" fill="#666" text-anchor="middle">inner の observer に委譲しつつ、on_item_start で</text>
+  <text x="470" y="327" font-size="10.5" fill="#666" text-anchor="middle">seen: dict[item_id, MercariItem] に全アイテムを記録</text>
+  <text x="470" y="343" font-size="10.5" fill="#666" text-anchor="middle">（リトライによる重複は dict で自然に排除 → 売却検知に使用）</text>
+
+  <!-- inner 委譲矢印 -->
+  <line x1="380" y1="270" x2="290" y2="230" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+  <line x1="560" y1="270" x2="650" y2="230" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+  <text x="470" y="252" font-size="10.5" fill="#555" text-anchor="middle">inner（いずれか）に委譲</text>
+
+  <!-- my_lib からの呼び出し -->
+  <rect x="30" y="380" width="400" height="44" rx="6" fill="#eef4fb" stroke="#3572b0"/>
+  <text x="230" y="399" font-size="12" font-weight="bold" fill="#1f4e79" text-anchor="middle">my_lib scrape.iter_items_on_display()</text>
+  <text x="230" y="416" font-size="10" fill="#1f4e79" text-anchor="middle">progress_observer としてラッパーを受け取る</text>
+  <line x1="330" y1="380" x2="400 " y2="352" stroke="#3572b0" stroke-width="1.3" marker-end="url(#arrow-blue)"/>
+  <text x="300" y="368" font-size="10" fill="#3572b0">on_total_count / on_item_start / on_item_complete</text>
+
+  <!-- _execute_once からの set_status -->
+  <rect x="520" y="380" width="370" height="44" rx="6" fill="#fff" stroke="#555"/>
+  <text x="705" y="399" font-size="12" font-weight="bold" text-anchor="middle">_execute_once() / cli.execute()</text>
+  <text x="705" y="416" font-size="10" fill="#666" text-anchor="middle">set_status() は observer 経由ではなく progress を直接呼ぶ</text>
+  <path d="M 705 380 L 705 365 L 880 365 L 880 188 L 843 188" fill="none" stroke="#555" stroke-width="1.3" marker-end="url(#arrow)"/>
+  <text x="800" y="358" font-size="10" fill="#555">set_status()</text>
+</svg>
