@@ -63,6 +63,9 @@ COPY --chown=ubuntu:ubuntu . .
 RUN --mount=type=cache,target=/home/ubuntu/.cache/uv,uid=1000,gid=1000 \
     uv sync --locked --no-editable --no-group dev
 
+# NOTE: プロジェクトはビルド時にインストール済みのため、実行時の再同期を抑止する
+ENV UV_NO_SYNC=1
+
 RUN mkdir -p data
 
 ENTRYPOINT ["/usr/bin/tini", "--", "uv", "run", "--no-group", "dev"]
