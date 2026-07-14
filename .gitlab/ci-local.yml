@@ -1,0 +1,76 @@
+# プロジェクト固有の CI ジョブ
+# （共通骨格は py-project の gitlab-ci-gen で生成される .gitlab-ci.yml 側にあり、
+#   このファイルは include: local で読み込まれる。py-project は本ファイルに触れない）
+
+test-smoke:
+    stage: test
+
+    needs:
+        - job: test-pytest
+          artifacts: false
+
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - uv sync --locked --no-editable
+
+    script:
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
+        - mv bot-config/mercari-bot.yaml config.yaml
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
+        - mv private_font/* font
+
+        - export LANG=ja_JP.UTF-8
+        - export LANGUAGE=ja_JP:ja
+        - export LC_ALL=ja_JP.UTF-8
+
+        - uv run mercari-bot -D -R
+        - sync
+
+    cache:
+        - key: selenium-${CI_PROJECT_ID}
+          paths:
+              - data/chrome
+          when: on_success
+
+    artifacts:
+        when: always
+        paths:
+            - data/debug/**
+
+test-docker:
+    stage: test
+
+    needs:
+        - generate-tag
+        - build-image
+        - job: test-pytest
+          artifacts: false
+        - job: test-smoke
+          artifacts: false
+
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - mkdir -p data/chrome data/debug
+        - chmod -R 777 data || true
+
+    script:
+        - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
+        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        # root ユーザーでディレクトリのパーミッションを修正
+        - >
+            docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data
+            --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG}
+            -c "chmod -R 777 /opt/mercari-bot/data"
+        - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} mercari-bot -D -R
+        - sync
+
+    cache:
+        - key: selenium-${CI_PROJECT_ID}
+          paths:
+              - data/chrome
+          when: on_success
+
+    artifacts:
+        when: always
+        paths:
+            - data/debug/**

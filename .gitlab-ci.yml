@@ -3,13 +3,19 @@ image: gitlab.green-rabbit.net:5050/kimata/local-ubuntu:260104_3efe597c
 variables:
     UV_LINK_MODE: copy
     UV_CACHE_DIR: .uv-cache
+    PYRIGHT_PYTHON_FORCE_VERSION: latest
+    UV_HTTP_TIMEOUT: "120"
 
     UV_EXTRA_INDEX_URL: "http://proxy:3141/simple/"
     UV_INSECURE_HOST: "proxy"
 
+default:
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
 stages:
     - generate-tag
-    - build-image
+    - build
     - test
     - tag-latest
     - deploy
@@ -25,19 +31,17 @@ generate-tag:
         expire_in: 1 hour
 
 build-image:
-    stage: build-image
+    stage: build
 
     needs:
         - generate-tag
 
     variables:
-        BUILDER: builder
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        BUILDER: builder-${CI_PROJECT_NAME}
 
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
+
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
         - mv bot-config/mercari-bot.yaml config.yaml
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
@@ -59,11 +63,6 @@ build-image:
             --build-arg CHROME_CACHE_BUSTER=$(date +%Y%W)
             --tag ${CI_REGISTRY_IMAGE}:${TAG}
             --push .
-
-    artifacts:
-        paths:
-            - config.yaml
-            - target.yaml
 
 test-typecheck:
     stage: test
@@ -99,6 +98,8 @@ test-pytest:
     script:
         - uv run pytest
 
+    coverage: '/TOTAL.*\s+(\d+%)/'
+
     cache:
         - key:
               files:
@@ -114,93 +115,23 @@ test-pytest:
             - reports/**
         reports:
             junit: reports/junit-report.xml
-
-test-smoke:
-    stage: test
-
-    needs:
-        - job: test-pytest
-          artifacts: false
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - uv sync --locked --no-editable
-
-    script:
-        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git
-        - mv bot-config/mercari-bot.yaml config.yaml
-        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git private_font
-        - mv private_font/* font
-
-        - export LANG=ja_JP.UTF-8
-        - export LANGUAGE=ja_JP:ja
-        - export LC_ALL=ja_JP.UTF-8
-
-        - uv run mercari-bot -D -R
-        - sync
-
-    cache:
-        - key: selenium-${CI_PROJECT_ID}
-          paths:
-              - data/chrome
-          when: on_success
-
-    artifacts:
-        when: always
-        paths:
-            - data/debug/**
-
-test-docker:
-    stage: test
-
-    needs:
-        - generate-tag
-        - build-image
-        - job: test-pytest
-          artifacts: false
-        - job: test-smoke
-          artifacts: false
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - mkdir -p data/chrome data/debug
-        - chmod -R 777 data || true
-
-    script:
-        - 'echo "Testing: ${CI_REGISTRY_IMAGE}:${TAG}"'
-        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
-        # root ユーザーでディレクトリのパーミッションを修正
-        - >
-            docker run --rm --user root -v $(pwd)/data:/opt/mercari-bot/data
-            --entrypoint /bin/bash ${CI_REGISTRY_IMAGE}:${TAG}
-            -c "chmod -R 777 /opt/mercari-bot/data"
-        - docker run --rm -v $(pwd)/data:/opt/mercari-bot/data ${CI_REGISTRY_IMAGE}:${TAG} mercari-bot -D -R
-        - sync
-
-    cache:
-        - key: selenium-${CI_PROJECT_ID}
-          paths:
-              - data/chrome
-          when: on_success
-
-    artifacts:
-        when: always
-        paths:
-            - data/debug/**
+            coverage_report:
+                coverage_format: cobertura
+                path: reports/coverage.xml
 
 tag-latest:
     stage: tag-latest
 
     needs:
         - generate-tag
-        - build-image
         - job: test-typecheck
           artifacts: false
         - job: test-pytest
           artifacts: false
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+        - job: test-smoke
+          artifacts: false
+        - job: test-docker
+          artifacts: false
 
     script:
         - 'echo "Tagging ${CI_REGISTRY_IMAGE}:${TAG} as latest"'
@@ -220,15 +151,27 @@ deploy:
         - generate-tag
         - job: test-typecheck
           artifacts: false
+        - job: test-pytest
+          artifacts: false
         - job: test-smoke
           artifacts: false
         - job: test-docker
+          artifacts: false
 
     image:
         name: gitlab.green-rabbit.net:5050/kimata/local-kubectl:250715_c88f3965
 
+    before_script: []
+
     script:
-        - 'echo "OK. The CronJob references latest, so no action is needed."'
+        - 'IMAGE="${CI_REGISTRY_IMAGE}:${TAG}"'
+        - 'echo "Deploying image: $IMAGE"'
+
+        - kubectl config get-contexts
+
+        - echo "OK. The CronJob references latest, so no action is needed."
+
+        - 'echo "✓ All deployments updated successfully to $TAG"'
 
     rules:
         # NOTE: 自動実行ではデプロイしない
@@ -240,15 +183,32 @@ deploy:
 
 renovate:
     stage: renovate
+    dependencies: []
+    resource_group: renovate
     image:
         name: gitlab.green-rabbit.net:5050/kimata/local-renovate:260104_3da7b77b
+
+    before_script: []
+
+    variables:
+        RENOVATE_CACHE_DIR: .renovate-cache
+        LOG_LEVEL: info
 
     script:
         - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
 
+    cache:
+        key: renovate-${CI_PROJECT_ID}
+        paths:
+            - ${RENOVATE_CACHE_DIR}
+
     rules:
-        - if: '$CI_COMMIT_BRANCH != "master"'
+        - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
           when: never
-        - if: '$CI_PIPELINE_SOURCE == "schedule"'
+        - if: $CI_PIPELINE_SOURCE == "schedule"
         - changes:
               - renovate.json
+
+# プロジェクト固有ジョブ（py-project は触らない）
+include:
+    - local: .gitlab/ci-local.yml
