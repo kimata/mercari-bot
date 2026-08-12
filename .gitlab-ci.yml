@@ -24,7 +24,30 @@ stages:
 generate-tag:
     stage: generate-tag
     script:
-        - echo "TAG=$(date +%y%m%d)_${CI_COMMIT_SHORT_SHA}" > tag.env
+        # NOTE: タグはイメージ内容を決める入力 (アプリ + clone する設定リポジトリ群) から
+        # 決定論的に生成する。日時部分は入力の最終コミット日時 (人間向け)、末尾の入力ハッシュが
+        # 一意性を担保する。内容が変わらない限りタグは同一になり、変わったら必ずタグも変わるため、
+        # 設定だけの変更でも kubectl set image が確実にロールアウトする。
+        - |
+            INPUT_SHAS="${CI_COMMIT_SHA}"
+            NEWEST_EPOCH=$(date -d "${CI_COMMIT_TIMESTAMP}" +%s)
+            INPUT_REPO="https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/bot-config.git"
+            git clone --quiet --depth 1 "${INPUT_REPO}" .input-repo-1
+            INPUT_SHAS="${INPUT_SHAS} $(git -C .input-repo-1 rev-parse HEAD)"
+            REPO_EPOCH=$(git -C .input-repo-1 log -1 --format=%ct)
+            if [ "${REPO_EPOCH}" -gt "${NEWEST_EPOCH}" ]; then NEWEST_EPOCH="${REPO_EPOCH}"; fi
+            rm -rf .input-repo-1
+            INPUT_REPO="https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/font.git"
+            git clone --quiet --depth 1 "${INPUT_REPO}" .input-repo-2
+            INPUT_SHAS="${INPUT_SHAS} $(git -C .input-repo-2 rev-parse HEAD)"
+            REPO_EPOCH=$(git -C .input-repo-2 log -1 --format=%ct)
+            if [ "${REPO_EPOCH}" -gt "${NEWEST_EPOCH}" ]; then NEWEST_EPOCH="${REPO_EPOCH}"; fi
+            rm -rf .input-repo-2
+            INPUT_HASH=$(echo "${INPUT_SHAS}" | sha1sum | cut -c1-7)
+            TAG_DATE=$(date -d "@${NEWEST_EPOCH}" +%y%m%d-%H%M)
+            echo "TAG=${TAG_DATE}_${CI_COMMIT_SHORT_SHA}_i${INPUT_HASH}" > tag.env
+            echo "IMAGE_BUILD_DATE=$(date -d "@${NEWEST_EPOCH}" --iso-8601=seconds)" >> tag.env
+            cat tag.env
     artifacts:
         reports:
             dotenv: tag.env
@@ -59,7 +82,7 @@ build-image:
             --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:latest
             --cache-to type=inline
             --cache-to type=registry,ref=${CI_REGISTRY_IMAGE}:cache,mode=max
-            --build-arg IMAGE_BUILD_DATE=$(date --iso-8601=seconds)
+            --build-arg IMAGE_BUILD_DATE=${IMAGE_BUILD_DATE}
             --build-arg CHROME_CACHE_BUSTER=$(date +%Y%W)
             --tag ${CI_REGISTRY_IMAGE}:${TAG}
             --push .
@@ -124,6 +147,10 @@ tag-latest:
 
     needs:
         - generate-tag
+        # NOTE: docker ベースのテストジョブが無い構成では、build-image を明示的に
+        # 待たないとイメージ push 前に実行されてしまう
+        - job: build-image
+          artifacts: false
         - job: test-typecheck
           artifacts: false
         - job: test-pytest
@@ -149,6 +176,10 @@ deploy:
 
     needs:
         - generate-tag
+        # NOTE: docker ベースのテストジョブが無い構成では、build-image を明示的に
+        # 待たないとイメージ push 前に実行されてしまう
+        - job: build-image
+          artifacts: false
         - job: test-typecheck
           artifacts: false
         - job: test-pytest
