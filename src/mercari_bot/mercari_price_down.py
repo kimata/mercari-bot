@@ -8,6 +8,7 @@ import re
 import traceback
 from typing import TYPE_CHECKING, Any
 
+import my_lib.browser
 import my_lib.browser_manager
 import my_lib.memory_util
 import my_lib.notify.slack
@@ -349,9 +350,10 @@ def _execute_once(
     try:
         progress.set_status(f"🔑 ログイン中... ({profile.name})")
 
+        # NOTE: login は Page ベース API に移行済み。既存 Selenium ドライバを Page として包んで渡す。
+        #       （scrape 等は従来どおり Selenium の driver/wait を使用）
         my_lib.store.mercari.login.execute(
-            driver,
-            wait,
+            my_lib.browser.wrap_selenium_driver(driver),
             profile.mercari,
             profile.line,
             config.slack,
