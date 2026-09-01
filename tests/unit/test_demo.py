@@ -122,17 +122,17 @@ class TestExecute:
         fixture_path.write_text(json.dumps(fixture_data, ensure_ascii=False))
         return fixture_path
 
-    def test_execute_success(self, fixture_file: pathlib.Path):
+    def test_execute_success(self, fixture_file: pathlib.Path, tmp_path: pathlib.Path):
         """正常実行"""
         with unittest.mock.patch.object(demo, "_FIXTURE_PATH", fixture_file):
-            ret = demo.execute(item_count=3)
+            ret = demo.execute(item_count=3, base_dir=tmp_path)
 
         assert ret == 0
 
-    def test_execute_with_fewer_items(self, fixture_file: pathlib.Path):
+    def test_execute_with_fewer_items(self, fixture_file: pathlib.Path, tmp_path: pathlib.Path):
         """アイテム数が少ない場合"""
         with unittest.mock.patch.object(demo, "_FIXTURE_PATH", fixture_file):
-            ret = demo.execute(item_count=2)
+            ret = demo.execute(item_count=2, base_dir=tmp_path)
 
         assert ret == 0
 
@@ -214,13 +214,13 @@ args = docopt.docopt(demo.__doc__)
 item_count = int(args["-n"]) if args["-n"] else 20
 log_format = my_lib.logger.SIMPLE_FORMAT if sys.stdout.isatty() else None
 my_lib.logger.init("demo.mercari", level=logging.INFO, log_format=log_format)
-ret_code = demo.execute(item_count)
+ret_code = demo.execute(item_count, base_dir=_base_dir)
 sys.exit(ret_code)
 """,
                     "<string>",
                     "exec",
                 ),
-                {"demo": demo},
+                {"demo": demo, "_base_dir": tmp_path},
             )
 
             mock_exit.assert_called_once_with(0)

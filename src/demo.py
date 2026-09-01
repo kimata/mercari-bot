@@ -146,8 +146,15 @@ def _create_mock_driver() -> unittest.mock.MagicMock:
     return driver
 
 
-def execute(item_count: int = 20) -> int:
-    """デモを実行する"""
+def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
+    """デモを実行する
+
+    Args:
+        item_count: 生成するモックアイテム数
+        base_dir: データ出力先の基底ディレクトリ（None なら一時ディレクトリ）。
+            テストで並列実行する際に一意なパスを渡し、SQLite の競合を避ける用途。
+
+    """
     from my_lib.notify.slack import SlackEmptyConfig
     from my_lib.store.mercari.config import LineLoginConfig, MercariLoginConfig
 
@@ -164,6 +171,9 @@ def execute(item_count: int = 20) -> int:
     interval_hour = 20
     threshold = 3000
     discount_step = 100
+
+    if base_dir is None:
+        base_dir = pathlib.Path(tempfile.gettempdir())
 
     # フィクスチャからアイテムを生成
     titles = _load_fixture()
@@ -185,9 +195,9 @@ def execute(item_count: int = 20) -> int:
         ],
         slack=SlackEmptyConfig(),
         data=DataConfig(
-            selenium=pathlib.Path(tempfile.gettempdir()) / "demo-selenium",
-            dump=pathlib.Path(tempfile.gettempdir()) / "demo-dump",
-            history=pathlib.Path(tempfile.gettempdir()) / "demo-selenium" / "history.db",
+            selenium=base_dir / "demo-selenium",
+            dump=base_dir / "demo-dump",
+            history=base_dir / "demo-selenium" / "history.db",
         ),
         mail=unittest.mock.MagicMock(),
     )
