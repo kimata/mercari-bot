@@ -63,3 +63,10 @@ class PriceVerificationTimeoutError(PostSubmitError):
     def __init__(self, item_name: str) -> None:
         self.item_name = item_name
         super().__init__(f"価格変更の送信後、検証がタイムアウトしました: {item_name}")
+
+
+class ListingAlertConsentError(DiscountError):
+    """編集ページの「法令に基づく表示事項」同意チェックボックスにチェックを入れられなかった"""
+
+    def __init__(self) -> None:
+        super().__init__("法令に基づく表示事項の同意チェックボックスにチェックを入れられませんでした")

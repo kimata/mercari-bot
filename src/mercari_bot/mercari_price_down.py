@@ -40,6 +40,11 @@ if TYPE_CHECKING:
 
 _WAIT_TIMEOUT_SEC = 15
 
+# NOTE: 商品ページの「商品の編集」リンク。data-testid ではなく編集ページへの href で特定する。
+_EDIT_LINK_XPATH = '//a[starts-with(@href, "/sell/edit/")]'
+# NOTE: 編集ページの「法令に基づく表示事項を登録しました」同意チェックボックス
+_LISTING_ALERT_CONSENT_XPATH = '//input[@data-testid="listing-alert-consent"]'
+
 # NOTE: アイテム単位の処理がこの回数連続で失敗したら中断する。
 # 連続失敗はサイト構造の変化（スクレイピング不能）を示唆するため。
 _MAX_CONSECUTIVE_ITEM_FAILURES = 2
@@ -78,6 +83,28 @@ def _notify_sold_items(
     )
 
 
+def _accept_listing_alert(driver: WebDriver) -> None:
+    """編集ページの「法令に基づく表示事項を登録しました」同意チェックボックスにチェックを入れる
+
+    化粧品カテゴリなどでは、この同意なしに送信するとエラーになり編集が確定しない。
+    """
+    checkboxes = driver.find_elements(By.XPATH, _LISTING_ALERT_CONSENT_XPATH)
+    if not checkboxes:
+        return
+
+    checkbox = checkboxes[0]
+    if checkbox.is_selected():
+        return
+
+    logging.info("法令に基づく表示事項の同意チェックボックスにチェックを入れます。")
+    # NOTE: 装飾されたチェックボックスは input 自体が不可視で通常クリックが失敗するため、
+    # JavaScript でクリックイベントを発火する
+    driver.execute_script("arguments[0].click();", checkbox)
+
+    if not checkbox.is_selected():
+        raise mercari_bot.exceptions.ListingAlertConsentError()
+
+
 def _get_modified_hour(wait: WebDriverWait[Any]) -> int:
     elem = wait.until(
         EC.presence_of_element_located((By.XPATH, '//div[@id="item-info"]//p[@color="secondary"]'))
@@ -105,7 +132,9 @@ def _execute_item(
         logging.info("更新してから %d 時間しか経過していないため、スキップします。", modified_hour)
         return ItemResult(ItemAction.SKIP_RECENT, item.price)
 
-    my_lib.selenium_util.click_xpath(driver, '//a[@data-testid="checkout-link"]')
+    # NOTE: 「商品の編集」ボタンは data-testid が変更されたことがある
+    # （checkout-link → checkout-button、2026-09-09）ため、編集ページへの href で特定する
+    my_lib.selenium_util.click_xpath(driver, _EDIT_LINK_XPATH)
 
     wait.until(EC.title_contains("商品の情報を編集"))
 
@@ -167,6 +196,7 @@ def _execute_item(
         str(new_price),
     )
     my_lib.selenium_util.random_sleep(2)
+    _accept_listing_alert(driver)
     edit_url = driver.current_url
     my_lib.selenium_util.click_xpath(driver, '//button[@data-testid="edit-button"]')
 

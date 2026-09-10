@@ -1237,6 +1237,61 @@ class TestExecuteItemPriceChange:
             assert result.old_price == 3000
             assert result.new_price == 3000  # debug_mode=True なので同額
 
+    def test_execute_item_accepts_listing_alert(self, mock_driver, mock_wait, profile_config: ProfileConfig):
+        """編集ページに法令表示事項の同意チェックボックスがあれば、送信前にチェックを入れる"""
+        item = _create_mock_item()
+
+        mock_modified_element = unittest.mock.MagicMock()
+        mock_modified_element.text = "25時間前"
+        mock_wait.until.return_value = mock_modified_element
+
+        mock_price_input = unittest.mock.MagicMock()
+        mock_price_input.get_attribute.return_value = "3000"
+
+        mock_new_price_element = unittest.mock.MagicMock()
+        mock_new_price_element.text = "3,000"
+
+        def find_element_side_effect(by, xpath):
+            if 'color="secondary"' in xpath:
+                return mock_modified_element
+            if 'name="price"' in xpath:
+                return mock_price_input
+            if 'data-testid="price"' in xpath:
+                return mock_new_price_element
+            return unittest.mock.MagicMock()
+
+        consent_checkbox = unittest.mock.MagicMock()
+        consent_checkbox.is_selected.side_effect = [False, True]
+
+        def find_elements_side_effect(by, xpath):
+            if "listing-alert-consent" in xpath:
+                return [consent_checkbox]
+            return []  # shipping-fee なし
+
+        mock_driver.find_element.side_effect = find_element_side_effect
+        mock_driver.find_elements.side_effect = find_elements_side_effect
+
+        with (
+            unittest.mock.patch("my_lib.selenium_util.click_xpath") as mock_click,
+            unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+            unittest.mock.patch("my_lib.selenium_util.random_sleep"),
+            unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
+            unittest.mock.patch("time.sleep"),
+        ):
+            result = mercari_bot.mercari_price_down._execute_item(
+                mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
+            )
+
+        assert result.action == mercari_bot.history.ItemAction.PRICE_DOWN
+        # チェックボックスのクリック（execute_script）が edit-button クリックより前に行われる
+        consent_call = [
+            c for c in mock_driver.execute_script.call_args_list if c.args[0] == "arguments[0].click();"
+        ]
+        assert len(consent_call) == 1
+        assert consent_call[0].args[1] is consent_checkbox
+        edit_calls = [c for c in mock_click.call_args_list if "edit-button" in c.args[1]]
+        assert len(edit_calls) == 1
+
     def test_execute_item_post_submit_timeout(self, mock_driver, mock_wait, profile_config: ProfileConfig):
         """送信後のタイムアウトは PriceVerificationTimeoutError に変換される（§3.1）
 
@@ -1356,6 +1411,73 @@ class TestExecuteItemPriceChange:
             mercari_bot.mercari_price_down._execute_item(
                 mock_driver, mock_wait, profile_config, item, debug_mode=True, dump_path=_DUMMY_DUMP_PATH
             )
+
+
+class TestAcceptListingAlert:
+    """_accept_listing_alert のテスト"""
+
+    @pytest.fixture
+    def mock_driver(self):
+        return unittest.mock.MagicMock()
+
+    def test_no_checkbox(self, mock_driver):
+        """同意チェックボックスが無ければ何もしない"""
+        mock_driver.find_elements.return_value = []
+
+        mercari_bot.mercari_price_down._accept_listing_alert(mock_driver)
+
+        mock_driver.execute_script.assert_not_called()
+
+    def test_already_checked(self, mock_driver):
+        """既にチェック済みならクリックしない"""
+        checkbox = unittest.mock.MagicMock()
+        checkbox.is_selected.return_value = True
+        mock_driver.find_elements.return_value = [checkbox]
+
+        mercari_bot.mercari_price_down._accept_listing_alert(mock_driver)
+
+        mock_driver.execute_script.assert_not_called()
+
+    def test_check_unchecked(self, mock_driver):
+        """未チェックなら JavaScript でクリックする"""
+        checkbox = unittest.mock.MagicMock()
+        checkbox.is_selected.side_effect = [False, True]
+        mock_driver.find_elements.return_value = [checkbox]
+
+        mercari_bot.mercari_price_down._accept_listing_alert(mock_driver)
+
+        mock_driver.execute_script.assert_called_once_with("arguments[0].click();", checkbox)
+
+    def test_check_failed(self, mock_driver):
+        """クリック後もチェックされない場合は例外"""
+        checkbox = unittest.mock.MagicMock()
+        checkbox.is_selected.return_value = False
+        mock_driver.find_elements.return_value = [checkbox]
+
+        with pytest.raises(mercari_bot.exceptions.ListingAlertConsentError):
+            mercari_bot.mercari_price_down._accept_listing_alert(mock_driver)
+
+
+class TestEditLinkXpath:
+    """商品ページの「商品の編集」リンク XPath が新旧 HTML 構造の両方にマッチすることを確認"""
+
+    # NOTE: 2026-09-09 以前の構造
+    OLD_HTML = (
+        '<div data-testid="checkout-button">'
+        '<a href="/sell/edit/m28836085390" data-testid="checkout-link">商品の編集</a></div>'
+    )
+    # NOTE: 2026-09-09 以降の構造（data-testid が a 要素に移り checkout-button になった）
+    NEW_HTML = '<a href="/sell/edit/m12435026940" data-testid="checkout-button"><span>商品の編集</span></a>'
+
+    @pytest.mark.parametrize("html", [OLD_HTML, NEW_HTML])
+    def test_match(self, html):
+        lxml_html = pytest.importorskip("lxml.html")
+        tree = lxml_html.fromstring(f"<html><body>{html}</body></html>")
+
+        matched = tree.xpath(mercari_bot.mercari_price_down._EDIT_LINK_XPATH)
+
+        assert len(matched) == 1
+        assert matched[0].text_content() == "商品の編集"
 
 
 class TestSoldDetection:
