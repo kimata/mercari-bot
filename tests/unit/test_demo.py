@@ -97,18 +97,20 @@ class TestCreateModifiedHourMock:
         assert 1 <= result <= 72
 
 
-class TestCreateMockDriver:
-    """_create_mock_driver のテスト"""
+class TestCreateMockPage:
+    """_create_mock_page のテスト"""
 
-    def test_create_mock_driver(self):
-        """モックドライバの作成"""
-        driver = demo._create_mock_driver()
+    def test_create_mock_page(self):
+        """モック Page の作成"""
+        page = demo._create_mock_page()
 
-        assert driver is not None
-        # find_elements が空リストを返す
-        assert driver.find_elements.return_value == []
-        # find_element がモック要素を返す
-        assert driver.find_element.return_value is not None
+        assert page is not None
+        # find_all が空リストを返す
+        assert page.find_all.return_value == []
+        # exists が False を返す
+        assert page.exists.return_value is False
+        # find がモック要素を返す
+        assert page.find.return_value is not None
 
 
 class TestExecute:

@@ -118,7 +118,7 @@ def _simulate_delay(base_sec: float, variance: float = 0.3) -> None:
 def _create_modified_hour_mock(interval_hour: int) -> Callable[..., int]:
     """_get_modified_hour のモックを作成"""
 
-    def mock_get_modified_hour(driver: Any) -> int:
+    def mock_get_modified_hour(page: Any) -> int:
         if random.random() < _SKIP_MODIFIED_HOUR_RATIO:
             # 20%: 更新時間が短い（スキップ対象）
             return random.randint(1, interval_hour - 1)
@@ -129,21 +129,24 @@ def _create_modified_hour_mock(interval_hour: int) -> Callable[..., int]:
     return mock_get_modified_hour
 
 
-def _create_mock_driver() -> unittest.mock.MagicMock:
-    """モックドライバを作成"""
-    driver = unittest.mock.MagicMock()
+def _create_mock_page() -> unittest.mock.MagicMock:
+    """モック Page を作成"""
+    page = unittest.mock.MagicMock()
 
-    # find_elements が空リストを返す（送料なし）
-    driver.find_elements.return_value = []
+    # find_all が空リストを返す（送料なし・同意チェックボックスなし・ポップアップなし）
+    page.find_all.return_value = []
 
-    # find_element の設定
+    # exists が False を返す（タイムセール・オークション形式ではない）
+    page.exists.return_value = False
+
+    # find の設定
     mock_element = unittest.mock.MagicMock()
-    driver.find_element.return_value = mock_element
+    page.find.return_value = mock_element
 
-    # current_url をアイテムページとして返す（フォールバック処理をスキップ）
-    driver.current_url = "https://jp.mercari.com/item/demo"
+    # url をアイテムページとして返す（フォールバック処理をスキップ）
+    page.url = "https://jp.mercari.com/item/demo"
 
-    return driver
+    return page
 
 
 def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
@@ -202,39 +205,30 @@ def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
         mail=unittest.mock.MagicMock(),
     )
 
-    # モックドライバ
-    mock_driver = _create_mock_driver()
+    # モック Page
+    mock_page = _create_mock_page()
 
     # 価格追跡用の状態
     price_state: _PriceState = {"current": 10000, "new": 10000, "updated": False}
 
-    # 価格入力フィールドの値を動的に設定
-    def get_price_attribute(name: str) -> str | None:
-        if name == "value":
-            return str(price_state["current"])
-        return None  # pragma: no cover  # value 以外の属性は使用されない
-
-    # execute_script で価格更新を検知
-    original_execute_script = mock_driver.execute_script
-
-    def mock_execute_script(script: str, *args: Any) -> Any:
-        # nativeInputValueSetter による価格設定を検知
-        if "nativeInputValueSetter" in script and len(args) >= 2:
-            new_value = args[1]
+    # 価格入力フィールドの evaluate（現在値の読み出しと nativeInputValueSetter による更新）
+    def mock_price_input_evaluate(script: str, *args: Any) -> Any:
+        if "nativeInputValueSetter" in script and args:
+            new_value = args[0]
             if isinstance(new_value, str) and new_value.isdigit():
                 price_state["new"] = int(new_value)
                 price_state["updated"] = True
                 _simulate_delay(0.8)
                 _simulate_delay(1.5)
-        return original_execute_script(script, *args)
+            return None
+        # (el) => el.value
+        return str(price_state["current"])
 
-    mock_driver.execute_script = mock_execute_script
-
-    # find_element が返す要素のモック
-    def mock_find_element(by: Any, value: str) -> unittest.mock.MagicMock:
+    # find が返す要素のモック
+    def mock_find(locator: Any) -> unittest.mock.MagicMock:
         element = unittest.mock.MagicMock()
-        if "price" in value:
-            element.get_attribute = get_price_attribute
+        if "price" in locator.value:
+            element.evaluate = mock_price_input_evaluate
             # 価格表示用 - 更新後は新価格を返す
             if price_state["updated"]:
                 element.text = str(price_state["new"])
@@ -244,13 +238,12 @@ def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
             element.text = "0"  # pragma: no cover  # デモでは price 要素のみ使用
         return element
 
-    mock_driver.find_element = mock_find_element
+    mock_page.find = mock_find
 
     # iter_items のモックで現在のアイテム価格を追跡
     # scrape.py の iter_items_on_display と同じログを出力する
     def tracking_mock_iter(
-        driver: Any,
-        wait: Any,
+        page: Any,
         debug_mode: bool,
         handlers: list[Callable[..., None]],
         progress_observer: Any = None,
@@ -291,7 +284,7 @@ def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
             price_state["updated"] = False
 
             for handler in handlers:
-                handler(driver, wait, item, debug_mode)
+                handler(page, item, debug_mode)
 
             if progress_observer is not None:
                 progress_observer.on_item_complete(index, item_count, item)
@@ -299,39 +292,34 @@ def execute(item_count: int = 20, base_dir: pathlib.Path | None = None) -> int:
             # 出品リストに戻る遷移をシミュレート
             _simulate_delay(1.0)
 
-    # WebDriverWait のモック
-    mock_wait_instance = unittest.mock.MagicMock()
-    mock_wait_instance.until = unittest.mock.MagicMock(return_value=True)
-
-    # BrowserManager のモック
+    # BrowserManager のモック（page() スコープがモック Page を返す）
     mock_browser_manager = unittest.mock.MagicMock()
-    mock_browser_manager.get_driver.return_value = (mock_driver, mock_wait_instance)
+    mock_browser_manager.page.return_value.__enter__.return_value = mock_page
+    mock_browser_manager.page.return_value.__exit__.return_value = False
 
-    # Selenium 関連をすべてモック
+    # ブラウザ関連をすべてモック
     with (
-        unittest.mock.patch("my_lib.browser_manager.BrowserManager", return_value=mock_browser_manager),
+        unittest.mock.patch("my_lib.browser.BrowserManager", return_value=mock_browser_manager),
         unittest.mock.patch("my_lib.store.mercari.login.execute") as mock_login,
         unittest.mock.patch(
             "my_lib.store.mercari.scrape.iter_items_on_display",
             side_effect=tracking_mock_iter,
         ),
-        unittest.mock.patch("my_lib.memory_util.read_selenium_memory_bytes", return_value=None),
         # _execute_item 内で使用される関数のモック
         unittest.mock.patch(
             "mercari_bot.mercari_price_down._get_modified_hour",
             side_effect=_create_modified_hour_mock(interval_hour),
         ),
         unittest.mock.patch(
-            "my_lib.selenium_util.click_xpath",
+            "mercari_bot.mercari_price_down._click_xpath",
             side_effect=lambda *args, **kwargs: _simulate_delay(0.5),
         ),
-        unittest.mock.patch("my_lib.selenium_util.xpath_exists", return_value=False),
+        unittest.mock.patch("mercari_bot.mercari_price_down._wait_present_patiently"),
         unittest.mock.patch(
-            "my_lib.selenium_util.random_sleep",
+            "my_lib.store.mercari.scrape.random_sleep",
             side_effect=lambda sec: _simulate_delay(sec * 0.3),
         ),
-        unittest.mock.patch("my_lib.selenium_util.wait_patiently"),
-        unittest.mock.patch("my_lib.selenium_util.dump_page"),
+        unittest.mock.patch("my_lib.browser.helpers.dump_page"),
         # 通知関連のモック（エラー時のスクリーンショット対策）
         unittest.mock.patch("mercari_bot.notify_slack.error_with_screenshot"),
         unittest.mock.patch("mercari_bot.notify_slack.error_with_traceback"),

@@ -33,7 +33,7 @@
 ### アプリケーション
 
 - **言語**: Python 3.10+
-- **自動化**: Selenium WebDriver
+- **自動化**: Patchright（Playwright ベース、headful の Chrome を Xvfb 上で操作）
 - **音声処理**: SpeechRecognition + pydub
 - **画像処理**: Pillow
 - **設定管理**: YAML + JSON Schema
@@ -138,7 +138,7 @@ cp config.example.yaml config.yaml
 
 #### 3. data ディレクトリの作成
 
-Selenium のプロファイルやデバッグデータの保存先を作成します。
+Chrome のプロファイルやデバッグデータの保存先を作成します。
 
 ```bash
 mkdir -p data
@@ -160,10 +160,10 @@ docker compose logs -f mercari-bot
 `compose.yaml` は以下の 2 つをコンテナにマウントします。
 それ以外はすべてイメージ内のものが使用されます。
 
-| ホスト側        | コンテナ側                                    | 用途                                  |
-| --------------- | --------------------------------------------- | ------------------------------------- |
-| `./config.yaml` | `/opt/mercari-bot/config.yaml` (読み取り専用) | 設定ファイル                          |
-| `./data/`       | `/opt/mercari-bot/data/`                      | Selenium プロファイル・デバッグデータ |
+| ホスト側        | コンテナ側                                    | 用途                                |
+| --------------- | --------------------------------------------- | ----------------------------------- |
+| `./config.yaml` | `/opt/mercari-bot/config.yaml` (読み取り専用) | 設定ファイル                        |
+| `./data/`       | `/opt/mercari-bot/data/`                      | Chrome プロファイル・デバッグデータ |
 
 ### Docker を使用しない場合
 
@@ -229,7 +229,7 @@ interval:
 
 ### データディレクトリ設定
 
-Seleniumのプロファイルやデバッグデータの保存先を設定：
+Chrome のプロファイルやデバッグデータの保存先を設定：
 
 ```yaml
 data:

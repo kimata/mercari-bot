@@ -6,11 +6,10 @@
 テスト全体で使用する共通のフィクスチャとヘルパーを定義します。
 """
 
-import logging
 import pathlib
 import unittest.mock
 
-import my_lib.browser_manager
+import my_lib.browser
 import pytest
 from my_lib.notify.slack import SlackEmptyConfig
 from my_lib.store.mercari.config import LineLoginConfig, MercariItem, MercariLoginConfig
@@ -138,24 +137,21 @@ def slack_checker():
 
 # === BrowserManager モック ===
 @pytest.fixture
-def mock_driver():
-    """モック WebDriver"""
-    driver = unittest.mock.MagicMock()
-    driver.current_url = "https://jp.mercari.com/test"
-    return driver
+def mock_page():
+    """モック Page"""
+    page = unittest.mock.MagicMock()
+    page.url = "https://jp.mercari.com/test"
+    page.find_all.return_value = []
+    page.exists.return_value = False
+    return page
 
 
 @pytest.fixture
-def mock_wait():
-    """モック WebDriverWait"""
-    return unittest.mock.MagicMock()
-
-
-@pytest.fixture
-def mock_browser_manager(mock_driver, mock_wait):
-    """モック BrowserManager"""
-    manager = unittest.mock.MagicMock(spec=my_lib.browser_manager.BrowserManager)
-    manager.get_driver.return_value = (mock_driver, mock_wait)
+def mock_browser_manager(mock_page):
+    """モック BrowserManager（page() スコープが mock_page を返す）"""
+    manager = unittest.mock.MagicMock(spec=my_lib.browser.BrowserManager)
+    manager.page.return_value.__enter__.return_value = mock_page
+    manager.page.return_value.__exit__.return_value = False
     return manager
 
 
@@ -177,8 +173,3 @@ def app_config(profile_config: ProfileConfig, tmp_path: pathlib.Path) -> AppConf
         ),
         mail=unittest.mock.MagicMock(),
     )
-
-
-# === ロギング設定 ===
-logging.getLogger("selenium.webdriver.remote").setLevel(logging.WARNING)
-logging.getLogger("selenium.webdriver.common").setLevel(logging.DEBUG)

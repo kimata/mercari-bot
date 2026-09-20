@@ -49,7 +49,7 @@ class ProgressDisplay:
 
             progress.set_status("アイテム処理中...")
             my_lib.store.mercari.scrape.iter_items_on_display(
-                driver, wait, debug_mode, [handler], progress_observer=progress
+                page, debug_mode, [handler], progress_observer=progress
             )
 
             progress.set_status("完了")

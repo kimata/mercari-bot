@@ -15,7 +15,7 @@
 
 ## プロジェクト概要
 
-mercari-bot は、メルカリに出品中のアイテムの価格を自動的に値下げするボットです。Selenium WebDriver を使用してメルカリにログインし、お気に入り数やアイテムの価格に応じて戦略的な価格調整を行います。
+mercari-bot は、メルカリに出品中のアイテムの価格を自動的に値下げするボットです。my_lib.browser（Patchright バックエンド、headful の Chrome を Xvfb 上で操作）を使用してメルカリにログインし、お気に入り数やアイテムの価格に応じて戦略的な価格調整を行います。
 
 ### 主な機能
 
@@ -100,15 +100,15 @@ src/
 
 ```python
 # 推奨
-import my_lib.selenium_util
+import my_lib.browser
 import my_lib.store.mercari.login
 
-driver = my_lib.selenium_util.create_driver(...)
+manager = my_lib.browser.BrowserManager(...)
 
 # 非推奨
-from my_lib.selenium_util import create_driver
+from my_lib.browser import BrowserManager
 
-driver = create_driver(...)
+manager = BrowserManager(...)
 ```
 
 これにより、関数やクラスがどのモジュールに属しているかが明確になり、コードの可読性と保守性が向上する。
@@ -255,13 +255,19 @@ slack:
         interval_min: 180
 ```
 
+## ブラウザの利用規約
+
+- Page は `my_lib.browser.BrowserManager.page()` の `with` スコープ内でのみ存在する。プロファイル 1 件の実行（ログイン → 出品一覧の走査 → 値下げ）を 1 つのスコープで行い、with を抜けるとタブごと閉じる
+- タブに紐づくリソース（CDP セッション・iframe・Route）はタブを閉じるまで解放されないため、Page をスコープ外に持ち出さない
+- 例外時のページダンプ（`mercari_bot.notify_slack.dump_and_notify_error`）はスコープの内側で呼ぶ
+- メルカリは bot 検出があるため headless は不可。Docker では `xvfb-run` で起動する
+
 ## 依存関係
 
 ### 主要ライブラリ
 
-- `my-lib`: 共通ライブラリ（Selenium 操作、メルカリログイン、通知）
-- `selenium`: ブラウザ自動化
-- `undetected-chromedriver`: 検出回避付き Chrome ドライバ
+- `my-lib`: 共通ライブラリ（ブラウザ抽象層 `my_lib.browser`、メルカリログイン・出品一覧走査、通知）
+- `patchright`（my-lib 経由）: 自動化痕跡を除去した Playwright。bot 検出回避のため素の Chrome を headful で使う（Xvfb 上で実行）
 - `pydub` / `speechrecognition`: CAPTCHA 音声認識
 - `docopt-ng`: CLI パーサー
 
@@ -361,7 +367,7 @@ E2E テストはデフォルトで除外（`--ignore=tests/e2e`）。
 11. **設定オブジェクト作成の一元化**: AppConfig や DataConfig など複数テストで繰り返し使用するオブジェクトは fixture として定義
 12. **Boolean 比較のスタイル**: 空コレクションの判定には `if collection:` / `if not collection:` を使用し、`len(collection) != 0` や `len(collection) == 0` は避ける。ただし、int 型との比較（例: `is_stop != 0`）は明示的な比較が適切
 13. **標準ライブラリの適切な使用**: `random.randint(a, b)` は `int(random.random() * n)` より明確。標準ライブラリが提供する適切な関数を使用する
-14. **Selenium DOM アクセスの最適化**: 同一要素への複数回アクセスが必要な場合、最初の `find_elements()` 結果をキャッシュすることでパフォーマンスを向上できる。ただし、DOM の動的変更がある場合はキャッシュ無効化に注意
+14. **DOM アクセスの最適化**: 同一要素への複数回アクセスが必要な場合、最初の `find_all()` 結果をキャッシュすることでパフォーマンスを向上できる。ただし、DOM の動的変更がある場合はキャッシュ無効化に注意
 
 ただし、以下の場合は改善を見送る：
 

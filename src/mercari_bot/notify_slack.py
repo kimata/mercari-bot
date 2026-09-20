@@ -10,21 +10,21 @@ import random
 import traceback
 from typing import TYPE_CHECKING
 
+import my_lib.browser.helpers
 import my_lib.notify.slack
-import my_lib.selenium_util
 import PIL.Image
 from my_lib.notify.slack import AttachImage
 
 if TYPE_CHECKING:
+    from my_lib.browser import Page
     from my_lib.notify.slack import SlackConfig, SlackEmptyConfig
-    from selenium.webdriver.remote.webdriver import WebDriver
 
 
 def error_with_screenshot(
     slack_config: SlackConfig | SlackEmptyConfig,
     title: str,
     message: str,
-    driver: WebDriver,
+    page: Page,
 ) -> None:
     """スクリーンショット付きでエラーを通知する。
 
@@ -32,7 +32,7 @@ def error_with_screenshot(
         slack_config: Slack 設定
         title: エラータイトル
         message: エラーメッセージ
-        driver: スクリーンショット取得用の WebDriver
+        page: スクリーンショット取得用の Page
 
     """
     my_lib.notify.slack.error_with_image(
@@ -40,7 +40,7 @@ def error_with_screenshot(
         title,
         message,
         AttachImage(
-            data=PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png())),
+            data=PIL.Image.open(io.BytesIO(page.screenshot())),
             text="エラー時のスクリーンショット",
         ),
     )
@@ -49,7 +49,7 @@ def error_with_screenshot(
 def error_with_traceback(
     slack_config: SlackConfig | SlackEmptyConfig,
     title: str,
-    driver: WebDriver,
+    page: Page,
 ) -> None:
     """エラーをトレースバック付きで通知する。
 
@@ -58,21 +58,21 @@ def error_with_traceback(
     Args:
         slack_config: Slack 設定
         title: エラータイトル
-        driver: スクリーンショット取得用の WebDriver
+        page: スクリーンショット取得用の Page
 
     Examples:
         except Exception:
             logging.exception("Failed to do something")
-            mercari_bot.notify_slack.error_with_traceback(config.slack, "処理に失敗", driver)
+            mercari_bot.notify_slack.error_with_traceback(config.slack, "処理に失敗", page)
 
     """
-    error_with_screenshot(slack_config, title, traceback.format_exc(), driver)
+    error_with_screenshot(slack_config, title, traceback.format_exc(), page)
 
 
 def dump_and_notify_error(
     slack_config: SlackConfig | SlackEmptyConfig,
     title: str,
-    driver: WebDriver,
+    page: Page,
     dump_path: pathlib.Path,
     exception: Exception,
 ) -> None:
@@ -80,38 +80,39 @@ def dump_and_notify_error(
 
     例外ハンドラ内で使用します。ページダンプの保存とSlack通知を一括で行います。
     スクリーンショットとページソース（gzip圧縮）をスレッドに添付します。
+    `page()` スコープの内側（タブが生きている間）で呼ぶこと。
 
     Args:
         slack_config: Slack 設定
         title: エラータイトル
-        driver: WebDriver
+        page: 対象の Page
         dump_path: ダンプ保存先パス
         exception: 発生した例外
 
     Examples:
         except Exception as e:
-            logging.exception("URL: %s", driver.current_url)
+            logging.exception("URL: %s", page.url)
             mercari_bot.notify_slack.dump_and_notify_error(
-                config.slack, "メルカリエラー", driver, dump_path, e
+                config.slack, "メルカリエラー", page, dump_path, e
             )
 
     """
     # NOTE: ブラウザが死んでいてもエラー通知自体は行えるよう、ダンプ失敗は握りつぶす
     try:
-        my_lib.selenium_util.dump_page(driver, random.randint(0, 99), dump_path)  # noqa: S311
-        my_lib.selenium_util.clean_dump(dump_path)
+        my_lib.browser.helpers.dump_page(page, random.randint(0, 99), dump_path)  # noqa: S311
+        my_lib.browser.helpers.clean_dump(dump_path)
     except Exception:
         logging.exception("ページダンプの保存に失敗しました")
 
     # スクリーンショットを取得
     try:
-        screenshot = PIL.Image.open(io.BytesIO(driver.get_screenshot_as_png()))
+        screenshot = PIL.Image.open(io.BytesIO(page.screenshot()))
     except Exception:
         screenshot = None
 
     # ページソースを取得
     try:
-        page_source: str | None = driver.page_source
+        page_source: str | None = page.content
     except Exception:
         page_source = None
 
