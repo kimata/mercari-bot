@@ -12,12 +12,10 @@ requires-python = ">=3.11"
 dependencies = [
     "docopt-ng>=0.9.0",
     "my-lib @ git+https://github.com/kimata/my-py-lib@96e919ee12d4c3492ad8e94a6bc302d54f9c25ad",
-    "selenium>=4.39.0",
+    "patchright>=1.62.0",
     "pydub>=0.25.1",
     "speechrecognition>=3.14.5",
     "pillow>=12.1.0",
-    "undetected-chromedriver>=3.5.5",
-    "setuptools>=80.0.0",  # undetected_chromedriver が distutils を使用するため必要
 ]
 
 [project.scripts]
@@ -131,7 +129,6 @@ exclude = [
 [[tool.mypy.overrides]]
 module = [
     "docopt",
-    "undetected_chromedriver",
     "pydub",
     "speech_recognition",
 ]

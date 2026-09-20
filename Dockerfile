@@ -15,7 +15,8 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     language-pack-ja \
     tzdata \
     fonts-noto-cjk \
-    smem
+    smem \
+    xvfb
 
 ENV TZ=Asia/Tokyo \
     LANG=ja_JP.UTF-8 \
@@ -44,7 +45,7 @@ ENV PATH="/home/ubuntu/.local/bin:$PATH"
 ENV UV_LINK_MODE=copy
 
 # ubuntu ユーザーで uv をインストール
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf https://astral.sh/uv/0.12.13/install.sh | sh
 
 WORKDIR /opt/mercari-bot
 
@@ -72,4 +73,4 @@ RUN mkdir -p data
 
 ENTRYPOINT ["/usr/bin/tini", "--", "uv", "run", "--no-group", "dev"]
 
-CMD ["mercari-bot", "-l"]
+CMD ["xvfb-run", "-a", "--server-args=-screen 0 1920x1080x24", "mercari-bot", "-l"]
